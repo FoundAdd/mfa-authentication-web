@@ -1,0 +1,50 @@
+export default {
+  app: {
+    name: 'MFA Authenticator',
+  },
+  common: {
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+    save: 'Save',
+    delete: 'Delete',
+    edit: 'Edit',
+    close: 'Close',
+    search: 'Search',
+  },
+  guide: {
+    title: 'Welcome to MFA Authenticator',
+    subtitle: 'Manage your two-factor authentication codes securely and offline.',
+    scan: 'Scan QR Code',
+    manual: 'Add Manually',
+    import: 'Import from File',
+  },
+  settings: {
+    title: 'Settings',
+    language: 'Language',
+    followSystem: 'Follow System',
+    zhCN: '简体中文',
+    en: 'English',
+  },
+  totp: {
+    noResults: 'No results found',
+    emptyGroup: 'No items in this group',
+    copySuccess: 'Copied!',
+    deleteConfirm: 'Are you sure you want to delete {issuer} - {label}?',
+    exportWarning: 'The export file will contain plaintext secrets. Please keep it safe.',
+    encryptionNotice: 'This app data is stored only on this device. Please use the export function regularly to back up.',
+  },
+  group: {
+    ungrouped: 'Ungrouped',
+    addGroup: 'Add Group',
+    deleteGroup: 'Delete Group',
+    deleteGroupItems: 'Also delete items in this group',
+    moveToGroup: 'Move to Group',
+  },
+  import: {
+    merge: 'Merge',
+    overwrite: 'Overwrite',
+    mergeDesc: 'Add new items only, skip duplicates',
+    overwriteDesc: 'Replace all existing data',
+    overwriteConfirm: 'Existing {count} keys will be replaced.',
+  },
+} as const

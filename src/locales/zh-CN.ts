@@ -1,0 +1,50 @@
+export default {
+  app: {
+    name: 'MFA 验证器',
+  },
+  common: {
+    cancel: '取消',
+    confirm: '确认',
+    save: '保存',
+    delete: '删除',
+    edit: '编辑',
+    close: '关闭',
+    search: '搜索',
+  },
+  guide: {
+    title: '欢迎使用 MFA 验证器',
+    subtitle: '安全离线管理您的双重验证码。',
+    scan: '扫码添加',
+    manual: '手动添加',
+    import: '从文件导入',
+  },
+  settings: {
+    title: '设置',
+    language: '语言',
+    followSystem: '跟随系统',
+    zhCN: '简体中文',
+    en: 'English',
+  },
+  totp: {
+    noResults: '未找到匹配结果',
+    emptyGroup: '该分组暂无条目',
+    copySuccess: '已复制！',
+    deleteConfirm: '确定要删除 {issuer} - {label} 吗？',
+    exportWarning: '导出文件将包含明文密钥，请妥善保管。',
+    encryptionNotice: '本应用数据仅存于本设备，请定期使用导出功能备份。',
+  },
+  group: {
+    ungrouped: '未分组',
+    addGroup: '添加分组',
+    deleteGroup: '删除分组',
+    deleteGroupItems: '同时删除分组内的条目',
+    moveToGroup: '移动到分组',
+  },
+  import: {
+    merge: '合并',
+    overwrite: '覆盖',
+    mergeDesc: '仅新增条目，跳过重复项',
+    overwriteDesc: '替换所有现有数据',
+    overwriteConfirm: '现有 {count} 条密钥将被替换。',
+  },
+} as const
