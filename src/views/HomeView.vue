@@ -202,7 +202,11 @@ const itemCount = computed(
     totpStore.data.ungrouped.length +
     totpStore.data.groups.reduce((sum, g) => sum + g.items.length, 0),
 )
-const isEmpty = computed(() => itemCount.value === 0)
+const isEmpty = computed(
+  () =>
+    totpStore.data.groups.length === 0 &&
+    totpStore.data.ungrouped.length === 0,
+)
 const dragActive = computed(() => batchMode.value || searchActive.value)
 
 function itemMatches(item: TotpItem): boolean {
