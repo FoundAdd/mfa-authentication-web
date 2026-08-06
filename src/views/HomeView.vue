@@ -26,8 +26,12 @@
     </div>
 
     <div v-if="!batchMode && !isEmpty && !searchActive" class="toolbar">
-      <el-button text type="primary" @click="promptAddGroup">
+      <el-button text type="primary" @click="router.push('/add')">
         <el-icon><Plus /></el-icon>
+        <span>{{ t('guide.manual') }}</span>
+      </el-button>
+      <el-button text @click="promptAddGroup">
+        <el-icon><FolderAdd /></el-icon>
         <span>{{ t('group.addGroup') }}</span>
       </el-button>
     </div>
@@ -42,6 +46,7 @@
             v-model="ungroupedList"
             :disabled="dragActive"
             handle=".drag-handle"
+            :animation="200"
             item-key="id"
             @end="onUngroupedDragEnd"
           >
@@ -63,6 +68,7 @@
         v-model="groupList"
         :disabled="dragActive"
         handle=".group-grip"
+        :animation="200"
         item-key="group.id"
         class="group-sort"
         @end="persistGroupOrder"
@@ -164,7 +170,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
-import { Plus, Search, Setting } from '@element-plus/icons-vue'
+import { FolderAdd, Plus, Search, Setting } from '@element-plus/icons-vue'
 import { useTotpStore, type ItemRef } from '@/stores/totp'
 import type { TotpGroup, TotpItem } from '@/types'
 import GroupCard from '@/components/GroupCard.vue'
@@ -517,8 +523,8 @@ onMounted(async () => {
 
 .toolbar {
   display: flex;
-  justify-content: flex-end;
-  padding: 4px 12px 8px;
+  gap: 4px;
+  padding: 4px 8px 8px;
 }
 
 .list {

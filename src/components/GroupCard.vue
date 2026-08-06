@@ -41,6 +41,7 @@
         :list="group.items"
         :disabled="dragDisabled"
         handle=".drag-handle"
+        :animation="200"
         item-key="id"
         @end="emit('itemDragEnd')"
       >
