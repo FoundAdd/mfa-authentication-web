@@ -1,4 +1,43 @@
+# ide files
+.idea/
+.vscode/
+
+# agent cli files
+.claude
+.codebuddy
+.codex
+.copilot
+.continue
+.lingma
+.mimocode
+.opencode
+
+# private files
+.env*
+
+# Dependencies
 node_modules/
-dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production build
+/**/dist/
+/**/build/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Extension zip
+extension/extension.zip
+
+# Coverage
+coverage/
+
+# other
 .DS_Store
 *.tsbuildinfo
