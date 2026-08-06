@@ -256,7 +256,7 @@ onMounted(() => {
   }
 })
 
-function onSave() {
+async function onSave() {
   if (!canSubmit.value) {
     submitAttempted.value = true
     const message = !form.issuer.trim()
@@ -285,6 +285,7 @@ function onSave() {
       period: form.period,
     })
   }
+  await totpStore.saveNow()
   ElMessage.success(t('form.saveSuccess'))
   router.push('/')
 }
