@@ -15,6 +15,7 @@
     "@element-plus/icons-vue": "^2.3.2",
     "@vueuse/core": "^13.1.0",
     "element-plus": "^2.9.8",
+    "html5-qrcode": "^2.3.8",
     "localforage": "^1.10.0",
     "otpauth": "^9.4.0",
     "pinia": "^3.0.2",

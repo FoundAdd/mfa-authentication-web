@@ -220,6 +220,7 @@ export const useTotpStore = defineStore('totp', () => {
     batchRemove,
     reorderItems,
     batchMove,
+    findItem,
     updateItem,
   }
 })

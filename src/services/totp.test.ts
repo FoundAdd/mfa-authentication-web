@@ -131,6 +131,8 @@ describe('base32 validation', () => {
   it('accepts valid base32 secrets of legal length', () => {
     expect(isValidBase32('JBSWY3DPEHPK3PXP')).toBe(true)
     expect(isValidBase32('j bswy3 dp eh pk 3px p')).toBe(true)
+    // 26 字符(128-bit) 是常见密钥长度,%8=2 合法
+    expect(isValidBase32('ABCDEFGHIJKLMNOPQRSTUVWXYZ')).toBe(true)
   })
   it('rejects invalid characters', () => {
     expect(isValidBase32('JBSWY3DP0EHPK3PX')).toBe(false)

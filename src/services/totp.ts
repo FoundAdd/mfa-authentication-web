@@ -7,8 +7,10 @@ export function normalizeSecret(input: string): string {
 
 export function isValidBase32(secret: string): boolean {
   const normalized = normalizeSecret(secret)
-  if (normalized.length === 0) return false
-  if (normalized.length % 8 !== 0) return false
+  if (normalized.length < 8) return false
+  // RFC 4648 未填充 base32 的合法长度对 8 取模为 0/2/4/5/7(覆盖 16/26/32 等常见密钥长度)
+  const mod = normalized.length % 8
+  if (mod !== 0 && mod !== 2 && mod !== 4 && mod !== 5 && mod !== 7) return false
   return /^[A-Z2-7]+$/.test(normalized)
 }
 

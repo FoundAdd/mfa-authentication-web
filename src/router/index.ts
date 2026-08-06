@@ -11,26 +11,23 @@ const router = createRouter({
     {
       path: '/add',
       name: 'add',
-      component: () => import('@/views/PlaceholderView.vue'),
-      props: { entry: 'manual' },
+      component: () => import('@/views/AddEditView.vue'),
+    },
+    {
+      path: '/edit',
+      name: 'edit',
+      component: () => import('@/views/AddEditView.vue'),
     },
     {
       path: '/scan',
       name: 'scan',
-      component: () => import('@/views/PlaceholderView.vue'),
-      props: { entry: 'scan' },
+      component: () => import('@/views/ScanView.vue'),
     },
     {
       path: '/import',
       name: 'import',
       component: () => import('@/views/PlaceholderView.vue'),
       props: { entry: 'import' },
-    },
-    {
-      path: '/edit',
-      name: 'edit',
-      component: () => import('@/views/PlaceholderView.vue'),
-      props: { entry: 'manual' },
     },
   ],
 })
