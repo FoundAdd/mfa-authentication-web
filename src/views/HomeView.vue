@@ -34,6 +34,10 @@
         <el-icon><FolderAdd /></el-icon>
         <span>{{ t('group.addGroup') }}</span>
       </el-button>
+      <el-button text @click="router.push('/import')">
+        <el-icon><Upload /></el-icon>
+        <span>{{ t('guide.import') }}</span>
+      </el-button>
     </div>
 
     <EmptyGuide v-if="isEmpty && !searchActive" />
@@ -170,7 +174,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
-import { FolderAdd, Plus, Search, Setting } from '@element-plus/icons-vue'
+import { FolderAdd, Plus, Search, Setting, Upload } from '@element-plus/icons-vue'
 import { useTotpStore, type ItemRef } from '@/stores/totp'
 import type { TotpGroup, TotpItem } from '@/types'
 import GroupCard from '@/components/GroupCard.vue'

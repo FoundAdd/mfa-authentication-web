@@ -64,7 +64,16 @@ let nativeScanner: NativeScanner | null = null
 
 function handleScannedText(text: string) {
   const raw = text.trim()
-  if (!raw.toLowerCase().startsWith('otpauth://totp/')) {
+  const lower = raw.toLowerCase()
+  if (lower.startsWith('otpauth-migration://')) {
+    stopScanner()
+    router.push({
+      path: '/migrate',
+      query: { data: raw },
+    })
+    return
+  }
+  if (!lower.startsWith('otpauth://totp/')) {
     error.value = t('scan.unsupported')
     return
   }

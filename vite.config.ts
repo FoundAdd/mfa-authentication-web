@@ -7,7 +7,10 @@ export default defineConfig({
   base: './',
   build: {
     rollupOptions: {
-      external: ['@capacitor-mlkit/barcode-scanning'],
+      external: [
+        '@capacitor-mlkit/barcode-scanning',
+        '@capacitor/share',
+      ],
     },
   },
   plugins: [

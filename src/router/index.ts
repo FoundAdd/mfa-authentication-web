@@ -26,8 +26,12 @@ const router = createRouter({
     {
       path: '/import',
       name: 'import',
-      component: () => import('@/views/PlaceholderView.vue'),
-      props: { entry: 'import' },
+      component: () => import('@/views/ImportView.vue'),
+    },
+    {
+      path: '/migrate',
+      name: 'migrate',
+      component: () => import('@/views/MigrationPreviewView.vue'),
     },
   ],
 })

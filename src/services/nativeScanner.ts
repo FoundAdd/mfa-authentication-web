@@ -1,4 +1,4 @@
-import { isNativePlatform } from '@/utils/capacitor'
+import { isNativePlatform, loadCapacitorPlugin } from '@/utils/capacitor'
 import type {
   BarcodeScannerPlugin,
   BarcodeScannerEvent,
@@ -22,19 +22,15 @@ export class NativeScanError extends Error {
 /**
  * 加载 @capacitor-mlkit/barcode-scanning 插件实例。
  * 该插件仅在 Capacitor 原生环境下于 Phase1-07 安装;原生环境之外不加载,
- * 因此这里采用动态 import(@vite-ignore)以避免 Web 打包时解析缺失模块。
+ * 因此这里采用运行时动态加载(specifier 走函数参数,绕过 Vite 静态解析)。
  */
 async function loadBarcodeScanner(): Promise<BarcodeScannerPlugin> {
-  try {
-    const mod = await import(
-      /* @vite-ignore */ '@' + 'capacitor-mlkit/barcode-scanning'
-    )
-    const plugin = (mod as { BarcodeScanner?: BarcodeScannerPlugin }).BarcodeScanner
-    if (!plugin) throw new Error('missing BarcodeScanner export')
-    return plugin
-  } catch {
-    throw new NativeScanError('plugin-unavailable', 'mlkit plugin unavailable')
-  }
+  const mod = await loadCapacitorPlugin<{
+    BarcodeScanner?: BarcodeScannerPlugin
+  }>('@capacitor-mlkit/barcode-scanning')
+  const plugin = mod?.BarcodeScanner
+  if (!plugin) throw new NativeScanError('plugin-unavailable', 'mlkit plugin unavailable')
+  return plugin
 }
 
 async function ensureCameraPermission(
