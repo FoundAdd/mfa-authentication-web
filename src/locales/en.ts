@@ -10,6 +10,10 @@ export default {
     edit: 'Edit',
     close: 'Close',
     search: 'Search',
+    move: 'Move',
+    back: 'Back',
+    selected: '{count} selected',
+    inputs: '{issuer} - {label}',
   },
   guide: {
     title: 'Welcome to MFA Authenticator',
@@ -30,8 +34,15 @@ export default {
     emptyGroup: 'No items in this group',
     copySuccess: 'Copied!',
     deleteConfirm: 'Are you sure you want to delete {issuer} - {label}?',
-    exportWarning: 'The export file will contain plaintext secrets. Please keep it safe.',
+    copyFailed: 'Copy failed, please copy manually',
+    moveToUngrouped: 'Ungrouped',
     encryptionNotice: 'This app data is stored only on this device. Please use the export function regularly to back up.',
+    batchDeleteConfirm: 'Delete {count} selected item(s)?',
+  },
+  data: {
+    corrupted: 'Corrupted data',
+    corruptedDesc: 'Local data appears corrupted or the device key is missing. Reset and clear will permanently remove all local keys. Please back up using export first.',
+    reset: 'Clear & reset',
   },
   group: {
     ungrouped: 'Ungrouped',
@@ -39,6 +50,17 @@ export default {
     deleteGroup: 'Delete Group',
     deleteGroupItems: 'Also delete items in this group',
     moveToGroup: 'Move to Group',
+    rename: 'Rename Group',
+    renamePlaceholder: 'Enter a group name',
+    deleteGroupConfirm: 'Are you sure you want to delete group "{name}"?',
+    count: '{count} items',
+  },
+  empty: {
+    title: 'No more keys',
+    noMatch: 'No keys matching "{query}"',
+  },
+  placeholder: {
+    comingSoon: 'This feature will be available in an upcoming version.',
   },
   import: {
     merge: 'Merge',

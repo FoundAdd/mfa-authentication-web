@@ -10,6 +10,10 @@ export default {
     edit: '编辑',
     close: '关闭',
     search: '搜索',
+    move: '移动',
+    back: '返回',
+    selected: '已选 {count} 项',
+    inputs: '{issuer} - {label}',
   },
   guide: {
     title: '欢迎使用 MFA 验证器',
@@ -30,8 +34,15 @@ export default {
     emptyGroup: '该分组暂无条目',
     copySuccess: '已复制！',
     deleteConfirm: '确定要删除 {issuer} - {label} 吗？',
-    exportWarning: '导出文件将包含明文密钥，请妥善保管。',
+    copyFailed: '复制失败，请手动复制',
+    moveToUngrouped: '未分组',
     encryptionNotice: '本应用数据仅存于本设备，请定期使用导出功能备份。',
+    batchDeleteConfirm: '确定要删除已选的 {count} 项吗？',
+  },
+  data: {
+    corrupted: '数据损坏',
+    corruptedDesc: '检测到本地数据损坏或设备密钥缺失，无法读取密钥。清空并重置将丢失本机所有密钥，请先通过导出功能备份。',
+    reset: '清空并重置',
   },
   group: {
     ungrouped: '未分组',
@@ -39,6 +50,17 @@ export default {
     deleteGroup: '删除分组',
     deleteGroupItems: '同时删除分组内的条目',
     moveToGroup: '移动到分组',
+    rename: '重命名分组',
+    renamePlaceholder: '请输入分组名称',
+    deleteGroupConfirm: '确定要删除分组“{name}”吗？',
+    count: '{count} 项',
+  },
+  empty: {
+    title: '没有更多密钥了',
+    noMatch: '未搜到与“{query}”相关的密钥',
+  },
+  placeholder: {
+    comingSoon: '该功能将在后续版本提供。',
   },
   import: {
     merge: '合并',
