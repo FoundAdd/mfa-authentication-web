@@ -1,0 +1,88 @@
+apply plugin: 'com.android.application'
+
+// Release signing skeleton: CI injects keystore via environment variables
+// (KEYSTORE_PATH / KEYSTORE_ALIAS / KEYSTORE_PASSWORD / KEYSTORE_KEY_PASSWORD).
+// For local builds a keystore.properties file in the project root can be used,
+// otherwise the release build falls back to the debug signing config.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def keystorePath = System.getenv('KEYSTORE_PATH') ?: keystoreProperties['keystorePath']
+def keystoreAlias = System.getenv('KEYSTORE_ALIAS') ?: keystoreProperties['keystoreAlias']
+def keystorePassword = System.getenv('KEYSTORE_PASSWORD') ?: keystoreProperties['keystorePassword']
+def keystoreKeyPassword = System.getenv('KEYSTORE_KEY_PASSWORD') ?: keystoreProperties['keystoreKeyPassword']
+
+android {
+    namespace "cn.hy.mfaauthenticator"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "cn.hy.mfaauthenticator"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword keystorePassword
+                keyAlias keystoreAlias
+                keyPassword keystoreKeyPassword ?: keystorePassword
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Locally fall back to debug signing so assembleRelease still yields
+            // an installable APK; CI overrides via the release signing config above.
+            signingConfig keystorePath ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+    // Custom APK output file names, e.g. mfa-authenticator-1.0-debug.apk
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "mfa-authenticator-${variant.versionName}-${variant.name}.apk"
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

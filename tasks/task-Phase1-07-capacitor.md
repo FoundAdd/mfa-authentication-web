@@ -22,9 +22,11 @@
 9. 应用图标与启动图: 使用 Capacitor 默认占位文件,不做自定义设计
 
 ## 验收标准
-- [ ] `npm run build && npx cap sync android` 成功
-- [ ] Android Studio / gradlew assembleDebug 构建通过
-- [ ] 真机或模拟器安装后:应用启动、TOTP 计算、拖拽、导入导出 (share 面板) 正常
-- [ ] 扫码权限申请与扫码流程正常
-- [ ] manifest 合并后无多余权限 (`adb shell dumpsys package cn.hy.mfaauthenticator | grep permission` 核查)
-- [ ] app 内无 Service Worker 注册痕迹
+- [x] `npm run build && npx cap sync android` 成功
+- [x] Android Studio / gradlew assembleDebug 构建通过
+- [x] 真机或模拟器安装后:应用启动、TOTP 计算、拖拽、导入导出 (share 面板) 正常
+- [x] 扫码权限申请与扫码流程正常
+- [x] manifest 合并后无多余权限 (`adb shell dumpsys package cn.hy.mfaauthenticator | grep permission` 核查)
+- [x] app 内无 Service Worker 注册痕迹
+
+## 状态: 已完成 (2026-08-07)

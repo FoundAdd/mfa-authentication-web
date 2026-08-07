@@ -41,3 +41,13 @@ coverage/
 # other
 .DS_Store
 *.tsbuildinfo
+
+# Capacitor / Android
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+*.jks
+*.keystore
+keystore.properties
