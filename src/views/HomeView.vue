@@ -26,17 +26,17 @@
     </div>
 
     <div v-if="!batchMode && !isEmpty && !searchActive" class="toolbar">
-      <el-button text type="primary" @click="router.push('/add')">
+      <el-button text type="primary" @click="router.push('/scan')">
+        <el-icon><Camera /></el-icon>
+        <span>{{ t('guide.scan') }}</span>
+      </el-button>
+      <el-button text @click="router.push('/add')">
         <el-icon><Plus /></el-icon>
         <span>{{ t('guide.manual') }}</span>
       </el-button>
       <el-button text @click="promptAddGroup">
         <el-icon><FolderAdd /></el-icon>
         <span>{{ t('group.addGroup') }}</span>
-      </el-button>
-      <el-button text @click="router.push('/import')">
-        <el-icon><Upload /></el-icon>
-        <span>{{ t('guide.import') }}</span>
       </el-button>
     </div>
 
@@ -174,7 +174,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
-import { FolderAdd, Plus, Search, Setting, Upload } from '@element-plus/icons-vue'
+import { Camera, FolderAdd, Plus, Search, Setting, Upload } from '@element-plus/icons-vue'
 import { useTotpStore, type ItemRef } from '@/stores/totp'
 import type { TotpGroup, TotpItem } from '@/types'
 import GroupCard from '@/components/GroupCard.vue'
@@ -502,7 +502,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px 12px;
   background: rgba(245, 245, 245, 0.95);
   backdrop-filter: blur(6px);
 }
@@ -531,6 +531,7 @@ onMounted(async () => {
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 4px 8px 8px;
 }

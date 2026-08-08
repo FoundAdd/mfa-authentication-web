@@ -1,20 +1,17 @@
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 
 export default defineConfig({
   base: './',
-  build: {
-    rollupOptions: {
-      external: [
-        '@capacitor-mlkit/barcode-scanning',
-        '@capacitor/share',
-      ],
-    },
+  server: {
+    https: true,
   },
   plugins: [
     vue(),
+    basicSsl(),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {

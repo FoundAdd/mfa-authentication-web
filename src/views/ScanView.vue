@@ -5,24 +5,13 @@
         <el-icon><ArrowLeft /></el-icon>
       </el-button>
       <div class="scan-title">{{ t('scan.title') }}</div>
-      <el-button
-        v-if="isNative && torchAvailable"
-        text
-        circle
-        @click="onToggleTorch"
-      >
-        <el-icon>
-          <template v-if="torchEnabled"><Sunny /></template>
-          <template v-else><MoonNight /></template>
-        </el-icon>
-      </el-button>
     </div>
 
     <div class="scan-body">
       <div v-if="error" class="error-card">
         <el-icon :size="40" color="#f56c6c"><Warning /></el-icon>
         <p class="error-text">{{ error }}</p>
-        <el-button type="primary" @click="retry">{{ t('common.confirm') }}</el-button>
+        <el-button type="primary" @click="onErrorConfirm">{{ t('common.confirm') }}</el-button>
       </div>
 
       <div v-else-if="!scanning && !error" class="init-card">
@@ -43,24 +32,19 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, MoonNight, Sunny, Warning } from '@element-plus/icons-vue'
+import { ArrowLeft, Warning } from '@element-plus/icons-vue'
 import { WebScanner, WebScanError } from '@/services/webScanner'
-import { NativeScanner, isNativeScannable, NativeScanError } from '@/services/nativeScanner'
 import { parseOtpUri, OtpUriError } from '@/services/otpauth-uri'
 import { normalizeSecret } from '@/services/totp'
 
 const router = useRouter()
 const { t } = useI18n()
 
-const isNative = isNativeScannable()
 const scanning = ref(false)
 const error = ref('')
-const torchAvailable = ref(false)
-const torchEnabled = ref(false)
 const readerRef = ref<HTMLElement | null>(null)
 
 let webScanner: WebScanner | null = null
-let nativeScanner: NativeScanner | null = null
 
 function handleScannedText(text: string) {
   const raw = text.trim()
@@ -103,64 +87,40 @@ async function startScanner() {
   error.value = ''
   scanning.value = true
 
-  if (isNative) {
-    try {
-      nativeScanner = new NativeScanner()
-      await nativeScanner.start((text) => {
-        handleScannedText(text)
-      })
-      const state = await nativeScanner.torchState()
-      torchAvailable.value = state.available
-      torchEnabled.value = state.enabled
-    } catch (e) {
-      scanning.value = false
-      if (e instanceof NativeScanError) {
-        if (e.reason === 'plugin-unavailable') {
-          error.value = t('scan.pluginUnavailable')
-        } else if (e.reason === 'permission-denied') {
-          error.value = t('scan.nativePermissionDenied')
-        } else {
-          error.value = t('scan.startFailed')
-        }
+  // App 与 Web 统一走 DOM 摄像头(html5-qrcode):
+  // - WebView 内 getUserMedia 由 Capacitor Bridge 映射到系统摄像头权限,行为与手机浏览器一致
+  if (!readerRef.value) {
+    error.value = t('scan.startFailed')
+    scanning.value = false
+    return
+  }
+  const containerId = 'qr-reader'
+  webScanner = new WebScanner(containerId, (text) => {
+    handleScannedText(text)
+  })
+
+  if (!webScanner.isSupported()) {
+    error.value = t('scan.insecureContext')
+    scanning.value = false
+    return
+  }
+
+  try {
+    await webScanner.start()
+  } catch (e) {
+    scanning.value = false
+    if (e instanceof WebScanError) {
+      if (e.reason === 'no-camera') {
+        error.value = t('scan.cameraNotFound')
+      } else if (e.reason === 'camera-denied') {
+        error.value = t('scan.permissionDenied')
+      } else if (e.reason === 'not-supported') {
+        error.value = t('scan.insecureContext')
       } else {
         error.value = t('scan.startFailed')
       }
-    }
-  } else {
-    // Web scanner
-    if (!readerRef.value) {
+    } else {
       error.value = t('scan.startFailed')
-      scanning.value = false
-      return
-    }
-    const containerId = 'qr-reader'
-    webScanner = new WebScanner(containerId, async (text) => {
-      handleScannedText(text)
-    })
-
-    if (!webScanner.isSupported()) {
-      error.value = t('scan.insecureContext')
-      scanning.value = false
-      return
-    }
-
-    try {
-      await webScanner.start()
-    } catch (e) {
-      scanning.value = false
-      if (e instanceof WebScanError) {
-        if (e.reason === 'no-camera') {
-          error.value = t('scan.cameraNotFound')
-        } else if (e.reason === 'camera-denied') {
-          error.value = t('scan.permissionDenied')
-        } else if (e.reason === 'not-supported') {
-          error.value = t('scan.insecureContext')
-        } else {
-          error.value = t('scan.startFailed')
-        }
-      } else {
-        error.value = t('scan.startFailed')
-      }
     }
   }
 }
@@ -170,10 +130,6 @@ async function stopScanner() {
     await webScanner.stop()
     webScanner = null
   }
-  if (nativeScanner) {
-    await nativeScanner.stop()
-    nativeScanner = null
-  }
 }
 
 function onCancel() {
@@ -181,17 +137,8 @@ function onCancel() {
   router.back()
 }
 
-function retry() {
-  error.value = ''
-  scanning.value = false
-  startScanner()
-}
-
-async function onToggleTorch() {
-  if (!nativeScanner) return
-  const next = !torchEnabled.value
-  await nativeScanner.setTorch(next)
-  torchEnabled.value = next
+function onErrorConfirm() {
+  onCancel()
 }
 
 onMounted(() => {
@@ -217,9 +164,10 @@ onUnmounted(() => {
   z-index: 10;
   display: flex;
   align-items: center;
-  padding: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px 12px;
   gap: 8px;
   color: #fff;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent);
 }
 
 .scan-topbar :deep(.el-button) {
@@ -246,17 +194,17 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 #qr-reader {
   width: 100%;
-  max-width: 480px;
-  opacity: 0;
+  height: 100%;
 }
 
 #qr-reader video {
   width: 100% !important;
-  height: auto !important;
+  height: 100% !important;
   object-fit: cover;
 }
 

@@ -1,8 +1,11 @@
-import { isNativePlatform, loadCapacitorPlugin } from '@/utils/capacitor'
+import { isNativePlatform } from '@/utils/capacitor'
+import {
+  BarcodeScanner,
+  LensFacing,
+} from '@capacitor-mlkit/barcode-scanning'
 import type {
   BarcodeScannerPlugin,
   BarcodesScannedEvent,
-  LensFacing,
 } from '@capacitor-mlkit/barcode-scanning'
 
 export type NativeScanFailure =
@@ -26,12 +29,7 @@ export class NativeScanError extends Error {
  * 或插件未安装时动态 import 失败,返回 null。
  */
 async function loadBarcodeScanner(): Promise<BarcodeScannerPlugin> {
-  const mod = await loadCapacitorPlugin<{
-    BarcodeScanner?: BarcodeScannerPlugin
-  }>('@capacitor-mlkit/barcode-scanning')
-  const plugin = mod?.BarcodeScanner
-  if (!plugin) throw new NativeScanError('plugin-unavailable', 'mlkit plugin unavailable')
-  return plugin
+  return BarcodeScanner
 }
 
 async function ensureCameraPermission(
@@ -76,9 +74,6 @@ export class NativeScanner {
       if (text) onResult(text)
     })
 
-    const { LensFacing } = (await import(
-      /* @vite-ignore */ '@capacitor-mlkit/barcode-scanning'
-    )) as { LensFacing: { Back: LensFacing } }
     await plugin.startScan({ lensFacing: LensFacing.Back })
   }
 

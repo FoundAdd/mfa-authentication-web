@@ -14,6 +14,8 @@ export default {
     back: 'Back',
     selected: '{count} selected',
     inputs: '{issuer} - {label}',
+    exitApp: 'Exit App',
+    exitAppConfirm: 'Are you sure you want to exit MFA Authenticator?',
   },
   guide: {
     title: 'Welcome to MFA Authenticator',

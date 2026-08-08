@@ -6,6 +6,7 @@ import App from './App.vue'
 import router from './router'
 import { i18n } from './locales'
 import { registerSW } from './utils/sw'
+import { registerBackHandler } from './services/backHandler'
 
 const app = createApp(App)
 app.use(createPinia())
@@ -15,3 +16,4 @@ app.use(i18n)
 app.mount('#app')
 
 registerSW()
+registerBackHandler()

@@ -23,6 +23,13 @@
 
       <div class="settings-label">{{ t('settings.data') }}</div>
       <el-button
+        class="import-btn"
+        :icon="Upload"
+        @click="router.push('/import')"
+      >
+        {{ t('import.title') }}
+      </el-button>
+      <el-button
         class="export-btn"
         :icon="Download"
         :disabled="itemCount === 0"
@@ -38,8 +45,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Download } from '@element-plus/icons-vue'
+import { Upload, Download } from '@element-plus/icons-vue'
 import { useSettingStore } from '@/stores/settings'
 import { useTotpStore } from '@/stores/totp'
 import type { LocaleType } from '@/locales'
@@ -52,6 +60,7 @@ const emit = defineEmits<{
   closed: []
 }>()
 
+const router = useRouter()
 const { t } = useI18n()
 const settingStore = useSettingStore()
 const totpStore = useTotpStore()
@@ -92,7 +101,7 @@ function onLocaleChange(value: LocaleType | 'follow-system') {
   margin: 4px 0;
 }
 
-.export-btn {
+.import-btn, .export-btn {
   margin-left: 0;
 }
 </style>

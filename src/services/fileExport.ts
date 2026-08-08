@@ -1,4 +1,6 @@
-import { isNativePlatform, loadCapacitorPlugin } from '@/utils/capacitor'
+import { isNativePlatform } from '@/utils/capacitor'
+import { Share } from '@capacitor/share'
+import { Filesystem, Directory } from '@capacitor/filesystem'
 
 export function downloadTextFile(filename: string, content: string): void {
   const blob = new Blob([content], { type: 'application/json;charset=utf-8' })
@@ -22,17 +24,16 @@ export async function exportTextFile(
 ): Promise<'shared' | 'downloaded'> {
   if (isNativePlatform()) {
     try {
-      const mod = await loadCapacitorPlugin<{
-        Share?: { share: (opts: object) => Promise<void> }
-      }>('@capacitor/share')
-      const Share = mod?.Share
-      if (Share) {
-        await Share.share({
-          title: filename,
-          files: [new File([content], filename, { type: 'application/json' })],
-        })
-        return 'shared'
-      }
+      const file = await Filesystem.writeFile({
+        path: filename,
+        data: content,
+        directory: Directory.Cache,
+      })
+      await Share.share({
+        title: filename,
+        files: [file.uri],
+      })
+      return 'shared'
     } catch {
       // fall through to download
     }

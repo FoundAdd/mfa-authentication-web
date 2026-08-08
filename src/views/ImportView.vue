@@ -217,6 +217,7 @@ async function confirmImport() {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
 }
 
 .title {

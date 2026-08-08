@@ -14,6 +14,8 @@ export default {
     back: '返回',
     selected: '已选 {count} 项',
     inputs: '{issuer} - {label}',
+    exitApp: '退出应用',
+    exitAppConfirm: '确定要退出 MFA 验证器吗？',
   },
   guide: {
     title: '欢迎使用 MFA 验证器',
