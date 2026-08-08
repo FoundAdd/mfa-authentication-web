@@ -25,7 +25,7 @@ export const i18n = createI18n({
 })
 
 export function setLocale(locale: LocaleType) {
-  ;(i18n.global as unknown as { locale: string }).locale = locale
+  i18n.global.locale.value = locale
 }
 
 export function getBrowserLocale(): LocaleType {
