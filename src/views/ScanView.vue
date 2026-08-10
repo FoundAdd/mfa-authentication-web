@@ -24,6 +24,21 @@
           <div class="viewfinder-frame" />
         </div>
       </div>
+
+      <div id="qr-file-scan" class="file-scan-container" />
+
+      <button type="button" class="image-entry" @click="pickImage">
+        <el-icon><Picture /></el-icon>
+        <span>{{ t('scan.fromImage') }}</span>
+      </button>
+
+      <input
+        ref="fileInputRef"
+        type="file"
+        accept="image/*"
+        class="file-input"
+        @change="onImagePicked"
+      />
     </div>
   </div>
 </template>
@@ -32,10 +47,9 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Warning } from '@element-plus/icons-vue'
-import { WebScanner, WebScanError } from '@/services/webScanner'
+import { ArrowLeft, Picture, Warning } from '@element-plus/icons-vue'
+import { WebScanner, WebScanError, scanImageText } from '@/services/webScanner'
 import { parseOtpUri, OtpUriError } from '@/services/otpauth-uri'
-import { normalizeSecret } from '@/services/totp'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -43,8 +57,41 @@ const { t } = useI18n()
 const scanning = ref(false)
 const error = ref('')
 const readerRef = ref<HTMLElement | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 let webScanner: WebScanner | null = null
+
+async function stopScanner() {
+  if (webScanner) {
+    await webScanner.stop()
+    webScanner = null
+  }
+}
+
+function pickImage() {
+  const input = fileInputRef.value
+  if (input) {
+    input.value = ''
+    input.click()
+  }
+}
+
+async function onImagePicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  await stopScanner()
+  scanning.value = true
+  error.value = ''
+  try {
+    const text = await scanImageText('qr-file-scan', file)
+    handleScannedText(text)
+  } catch {
+    error.value = t('scan.fromImageFailed')
+  } finally {
+    scanning.value = false
+  }
+}
 
 function handleScannedText(text: string) {
   const raw = text.trim()
@@ -122,13 +169,6 @@ async function startScanner() {
     } else {
       error.value = t('scan.startFailed')
     }
-  }
-}
-
-async function stopScanner() {
-  if (webScanner) {
-    await webScanner.stop()
-    webScanner = null
   }
 }
 
@@ -244,5 +284,43 @@ onUnmounted(() => {
   text-align: center;
   color: #999;
   font-size: 15px;
+}
+
+.image-entry {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+  transform: translateX(-50%);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(26, 26, 26, 0.9);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+.image-entry:hover {
+  background: rgba(58, 58, 58, 0.95);
+}
+
+.file-input {
+  display: none;
+}
+
+.file-scan-container {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 </style>

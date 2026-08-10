@@ -84,6 +84,26 @@ export class WebScanner {
   }
 }
 
+/**
+ * 从本地图片文件中解码二维码(html5-qrcode scanFile 能力)。
+ * 与摄像头扫码使用独立的容器实例,互不干扰。
+ * @param containerId 已挂载且存在于 DOM 的容器元素 id
+ * @param file 用户选择的图片文件
+ * @returns 解码出的原始文本
+ */
+export async function scanImageText(containerId: string, file: File): Promise<string> {
+  const instance = new Html5Qrcode(containerId)
+  try {
+    return await instance.scanFile(file, false)
+  } finally {
+    try {
+      instance.clear()
+    } catch {
+      /* 忽略清理失败 */
+    }
+  }
+}
+
 function mapCameraError(err: unknown): WebScanError {
   const name =
     err instanceof Error

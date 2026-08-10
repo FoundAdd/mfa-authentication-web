@@ -97,6 +97,8 @@ export default {
     insecureContext: '扫码需要在 HTTPS 或 localhost 环境中使用',
     startFailed: '无法启动摄像头，请重试',
     unsupported: '不支持的二维码内容',
+    fromImage: '选择图片识别',
+    fromImageFailed: '无法从图片中识别二维码',
     cancel: '取消',
     torchOn: '开灯',
     torchOff: '关灯',
