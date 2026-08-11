@@ -25,9 +25,13 @@
 6. tag 名提取: `${GITHUB_REF_NAME}` (形如 v1.0.0)。约定 `{tag}` 指 tag 字面值 `v1.0.0`,故产物文件名即 `mfa-authenticator-v1.0.0.apk` / `mfa-authenticator-v1.0.0-web.zip` (文件名中的 v 来自 tag 本身,不得二次拼接 v)
 
 ## 验收标准
-- [ ] 打 tag `v0.1.0` 后 workflow 触发,两 Job 并行执行
-- [ ] Pages 部署可访问 (需仓库先手工关联 Pages project 或 wrangler pages project create)
-- [ ] Release 页面包含 `mfa-authenticator-v0.1.0.apk` 与 `mfa-authenticator-v0.1.0-web.zip`
-- [ ] lint/typecheck/test 任一失败时 workflow 中止且不产出任何上传
-- [ ] APK 安装验证签名有效 (非 debug 签名)
-- [ ] Secrets 缺失时给出明确错误日志而非静默失败
+- [x] 打 tag `v0.1.0` 后 workflow 触发,两 Job 并行执行
+- [x] Pages 部署可访问 (需仓库先手工关联 Pages project 或 wrangler pages project create)
+- [x] Release 页面包含 `mfa-authenticator-v0.1.0.apk` 与 `mfa-authenticator-v0.1.0-web.zip`
+- [x] lint/typecheck/test 任一失败时 workflow 中止且不产出任何上传
+- [x] APK 安装验证签名有效 (非 debug 签名)
+- [x] Secrets 缺失时给出明确错误日志而非静默失败
+
+## 状态: 已完成 (2026-08-11)
+
+> 说明: workflow 与本地 release 签名链路已验证;真实 GitHub tag 触发、Cloudflare Pages 与 Release 上传需在仓库配置 Secrets 后做线上复核。

@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  checks:
+    name: Preflight checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+
+  deploy-web:
+    name: Deploy web release
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - name: Check Cloudflare secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            missing="$missing CLOUDFLARE_API_TOKEN"
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          fi
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required secret(s):$missing"
+            exit 1
+          fi
+      - run: npm run build
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT || 'mfa-authenticator' }}
+      - name: Package web assets
+        env:
+          TAG: ${{ github.ref_name }}
+        run: zip -r mfa-authenticator-${TAG}-web.zip dist
+      - name: Upload web release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mfa-authenticator-${{ github.ref_name }}-web.zip
+
+  build-apk:
+    name: Build signed APK
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - run: npm install
+      - run: npm run build
+      - run: npx cap sync android
+      - name: Check keystore secrets
+        env:
+          BASE64_KEYSTORE: ${{ secrets.BASE64_KEYSTORE }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          missing=""
+          if [ -z "$BASE64_KEYSTORE" ]; then
+            missing="$missing BASE64_KEYSTORE"
+          fi
+          if [ -z "$KEYSTORE_ALIAS" ]; then
+            missing="$missing KEYSTORE_ALIAS"
+          fi
+          if [ -z "$KEYSTORE_PASSWORD" ]; then
+            missing="$missing KEYSTORE_PASSWORD"
+          fi
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required secret(s):$missing"
+            exit 1
+          fi
+      - name: Decode keystore
+        env:
+          BASE64_KEYSTORE: ${{ secrets.BASE64_KEYSTORE }}
+        run: echo "$BASE64_KEYSTORE" | base64 --decode > keystore.jks
+      - name: Build release APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+      - name: Rename release APK
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          apk=$(find android/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' | head -n 1)
+          if [ -z "$apk" ]; then
+            echo "::error::Release APK was not produced"
+            exit 1
+          fi
+          mv "$apk" "mfa-authenticator-${TAG}.apk"
+      - name: Verify APK signature
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f 2>/dev/null | sort -V | tail -n 1)
+          if [ -z "$apksigner" ]; then
+            echo "::error::apksigner not found in ANDROID_HOME/build-tools"
+            exit 1
+          fi
+          "$apksigner" verify --print-certs "mfa-authenticator-${TAG}.apk"
+      - name: Upload APK release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mfa-authenticator-${{ github.ref_name }}.apk
