@@ -25,6 +25,10 @@
 7. PWA 图标: 192/512 两档占位 PNG
 8. `package.json` scripts: `dev` / `build` / `typecheck` (vue-tsc) / `lint` / `test`
 9. SW 注册封装: 仅在 `Capacitor.isNativePlatform()` 为 false 时注册 (此判断做成可 stub 的工具函数,Capacitor 未安装时返回 false)
+10. Gradle 构建加速:
+    - 启用并行模块编译(`org.gradle.parallel`)
+    - 启用构建缓存(`org.gradle.caching`)与按需配置(`org.gradle.configureondemand`)
+    - 提升 JVM 堆至 4GB(`-Xmx4096m`)
 
 ## 验收标准
 - [x] `npm run dev` 启动无报错,页面渲染占位内容
@@ -32,3 +36,6 @@
 - [x] `npm run typecheck` / `npm run lint` / `npm run test` 可执行并通过
 - [x] 手动切换浏览器语言后刷新,界面语言随 navigator.language 变化
 - [x] 手动选择语言后刷新,保持用户选择
+- [x] Gradle 并行与缓存加速构建,缩短 Android 打包时间
+
+## 状态: 已完成 (2026-08-05,Gradle 构建加速 2026-08-11)
