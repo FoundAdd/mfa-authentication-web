@@ -1,0 +1,3 @@
+# Keep the Unix Gradle wrapper script usable after Windows checkouts.
+android/gradlew text eol=lf
+android/gradlew.bat text eol=crlf
