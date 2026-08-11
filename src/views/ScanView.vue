@@ -18,7 +18,14 @@
         <p>{{ t('scan.detecting') }}</p>
       </div>
 
-      <div v-show="!error" class="reader-container">
+      <div
+        v-show="!error"
+        ref="readerContainerRef"
+        class="reader-container"
+        @touchstart="onReaderTouchStart"
+        @touchmove.prevent="onReaderTouchMove"
+        @touchend="onReaderTouchEnd"
+      >
         <div id="qr-reader" ref="readerRef" />
         <div class="viewfinder-overlay">
           <div class="viewfinder-frame" />
@@ -57,9 +64,54 @@ const { t } = useI18n()
 const scanning = ref(false)
 const error = ref('')
 const readerRef = ref<HTMLElement | null>(null)
+const readerContainerRef = ref<HTMLElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
 let webScanner: WebScanner | null = null
+
+const MAX_ZOOM = 5
+let zoomScale = 1
+let pinchStartDist = 0
+let pinchStartScale = 1
+
+function getStreamingVideo(): HTMLVideoElement | null {
+  return readerContainerRef.value?.querySelector('video') ?? null
+}
+
+function pinchDistance(touches: TouchList): number {
+  return Math.hypot(
+    touches[0].clientX - touches[1].clientX,
+    touches[0].clientY - touches[1].clientY,
+  )
+}
+
+function onReaderTouchStart(event: TouchEvent) {
+  if (event.touches.length !== 2) return
+  pinchStartDist = pinchDistance(event.touches)
+  pinchStartScale = zoomScale
+  const video = getStreamingVideo()
+  if (!video) return
+  const rect = video.getBoundingClientRect()
+  const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left
+  const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top
+  video.style.transformOrigin = `${(midX / rect.width) * 100}% ${(midY / rect.height) * 100}%`
+}
+
+function onReaderTouchMove(event: TouchEvent) {
+  if (event.touches.length !== 2) return
+  const video = getStreamingVideo()
+  if (!video) return
+  const next = Math.min(
+    MAX_ZOOM,
+    Math.max(1, (pinchStartScale * pinchDistance(event.touches)) / (pinchStartDist || 1)),
+  )
+  zoomScale = next
+  video.style.transform = `scale(${next})`
+}
+
+function onReaderTouchEnd() {
+  pinchStartDist = 0
+}
 
 async function stopScanner() {
   if (webScanner) {
@@ -133,6 +185,7 @@ function handleScannedText(text: string) {
 async function startScanner() {
   error.value = ''
   scanning.value = true
+  zoomScale = 1
 
   // App 与 Web 统一走 DOM 摄像头(html5-qrcode):
   // - WebView 内 getUserMedia 由 Capacitor Bridge 映射到系统摄像头权限,行为与手机浏览器一致
@@ -235,6 +288,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  touch-action: none;
 }
 
 #qr-reader {
@@ -242,10 +296,14 @@ onUnmounted(() => {
   height: 100%;
 }
 
-#qr-reader video {
+#qr-reader :deep(video) {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover;
+}
+
+#qr-reader :deep(#qr-shaded-region) {
+  display: none !important;
 }
 
 .viewfinder-overlay {
@@ -263,6 +321,7 @@ onUnmounted(() => {
   border: 2px solid rgba(255, 255, 255, 0.8);
   border-radius: 12px;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+  transform: translateY(-4.5vh);
 }
 
 .error-card {

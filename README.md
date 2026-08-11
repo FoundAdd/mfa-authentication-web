@@ -115,6 +115,8 @@ CREATE TABLE IF NOT EXISTS user_data (
 3.  **编辑条目**: 除 secret 外所有字段可编辑(secret 只读);保存前同样试算 TOTP 预览。
 4.  **Web 端扫码**: 使用 `html5-qrcode` 调用 `navigator.mediaDevices`。注意浏览器需 HTTPS 环境且需用户授权摄像头。
 5.  **App 端扫码**: 集成 `@capacitor-mlkit/barcode-scanning`,调用原生相机扫码,自绘取景框 UI(Vue 透明覆盖层)+ 手电筒支持。处理 Android 动态权限申请逻辑。
+    *   **取景框位置**: 自定义取景框通过 `translateY(-4.5vh)` 适度上移,避免位置过靠下;隐藏 html5-qrcode 自带遮罩层以消除双层取景框,并使用 `:deep(video)` 将摄像头画面全屏拉伸 (`object-fit: cover`) 填满扫码区域。
+    *   **手势变焦 (类微信)**: 扫码区域设置 `touch-action: none` 阻止浏览器整页缩放与双指手势;双指捏合时对 `<video>` 元素做 CSS `scale()` 变换实现画面放大(1–5 倍,以捏合中心为缩放原点),TopBar、取景框、按钮等 UI 保持原位不入镜。同时将解码区域 `qrbox` 放大至 `0.9 × min(width,height)`(上限 420px),确保取景框上移后仍完整落在解码区域内。
 6.  **批量导入 (Google Authenticator 迁移)**: 解析 `otpauth-migration://offline?...` protobuf 格式,解析出多条目后进入**预览选择页**(列表勾选),确认后按模块 2 的合并规则导入;无法识别的格式提示"不支持的二维码内容"。Microsoft Authenticator 无公开批量导出格式,其迁移走标准单条 `otpauth://` 扫码(已覆盖),README/帮助文案注明。
 7.  **删除确认交互**: 单删需二次确认弹窗(显示 issuer + label);删除分组弹窗含勾选框"同时删除分组内条目",默认未勾选,未勾选时条目移入"未分组",勾选时连同删除。批量选择模式:长按条目进入多选,顶部"已选 N 项"与操作栏(移动到分组/删除/取消)。
 ### 模块 4: Cloudflare Workers 后端 (Phase 2,本次不开发)

@@ -18,10 +18,14 @@
 4. 编辑: 复用新增表单,secret 字段只读禁用;保存前同样预览试算
 5. Web 扫码: `html5-qrcode`,`navigator.mediaDevices`,HTTPS 与权限异常处理与文案
 6. App 扫码: `@capacitor-mlkit/barcode-scanning`
-   - 自绘取景框 UI (Vue 透明覆盖层),手电筒开关
-   - Android 动态权限申请流程与拒权引导文案
-   - 扫描结果回传统一进入 URI/GA-migration 解析入口 (解析实现见 06)
-7. 扫描结果解析后进入可编辑表单再保存
+- 自绘取景框 UI (Vue 透明覆盖层),手电筒开关
+    - Android 动态权限申请流程与拒权引导文案
+    - 扫描结果回传统一进入 URI/GA-migration 解析入口 (解析实现见 06)
+    - 取景框位置上移 (`translateY(-4.5vh)`),避免过于靠下
+    - 隐藏 html5-qrcode 自带遮罩层,仅保留自定义取景框,消除双层覆盖
+    - 视频 `:deep(video)` 全屏拉伸 (`object-fit: cover`),填满整个扫码区域
+    - 双指捏合变焦: `touch-action: none` 阻止页面缩放,对 `<video>` 做 CSS `scale()` 变换,图片放大而 UI 保持不变(1–5 倍)
+    - 解码区域 `qrbox` 放大至 `0.9 × min(width,height)` 上限 420px,确保取景框上移后仍在解码区域内
 
 ## 验收标准
 - [x] 合法 otpauth URI 各参数解析正确,非法 URI 提示"不支持的二维码内容"
@@ -31,5 +35,7 @@
 - [x] Web 端在无摄像头/拒绝授权场景有明确文案
 - [x] App 端权限申请、拒绝、扫码取消流程完整
 - [x] Vitest 覆盖: URI 解析正常与容错分支
+- [x] 取景框位置适度上移,不再过于靠下,与解码区域保持对齐
+- [x] 双指捏合时页面不再整体缩放,改为摄像头画面放大,UI 元素保持原位
 
 ## 状态: 已完成 (2026-08-06)

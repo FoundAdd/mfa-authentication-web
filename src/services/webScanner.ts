@@ -47,8 +47,8 @@ export class WebScanner {
         {
           fps: 10,
           qrbox: (width, height) => {
-            const side = Math.min(width, height) * 0.7
-            return { width: Math.min(side, 280), height: Math.min(side, 280) }
+            const side = Math.min(width, height) * 0.9
+            return { width: Math.min(side, 420), height: Math.min(side, 420) }
           },
         },
         (decoded) => {
