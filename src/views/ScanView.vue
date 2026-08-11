@@ -18,12 +18,35 @@
         <p>{{ t('scan.detecting') }}</p>
       </div>
 
-      <div v-show="!error" class="reader-container">
+      <div
+        v-show="!error"
+        ref="readerContainerRef"
+        class="reader-container"
+        @touchstart="onReaderTouchStart"
+        @touchmove.prevent="onReaderTouchMove"
+        @touchend="onReaderTouchEnd"
+      >
         <div id="qr-reader" ref="readerRef" />
         <div class="viewfinder-overlay">
           <div class="viewfinder-frame" />
         </div>
       </div>
+
+      <div id="qr-file-scan" class="file-scan-container" />
+      <div id="qr-frame-scan" class="file-scan-container" />
+
+      <button type="button" class="image-entry" @click="pickImage">
+        <el-icon><Picture /></el-icon>
+        <span>{{ t('scan.fromImage') }}</span>
+      </button>
+
+      <input
+        ref="fileInputRef"
+        type="file"
+        accept="image/*"
+        class="file-input"
+        @change="onImagePicked"
+      />
     </div>
   </div>
 </template>
@@ -32,10 +55,9 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Warning } from '@element-plus/icons-vue'
-import { WebScanner, WebScanError } from '@/services/webScanner'
+import { ArrowLeft, Picture, Warning } from '@element-plus/icons-vue'
+import { WebScanner, WebScanError, scanImageText } from '@/services/webScanner'
 import { parseOtpUri, OtpUriError } from '@/services/otpauth-uri'
-import { normalizeSecret } from '@/services/totp'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -43,8 +65,89 @@ const { t } = useI18n()
 const scanning = ref(false)
 const error = ref('')
 const readerRef = ref<HTMLElement | null>(null)
+const readerContainerRef = ref<HTMLElement | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 let webScanner: WebScanner | null = null
+
+const MAX_ZOOM = 5
+let zoomScale = 1
+let pinchStartDist = 0
+let pinchStartScale = 1
+
+let disposed = true
+
+function getStreamingVideo(): HTMLVideoElement | null {
+  return readerContainerRef.value?.querySelector('video') ?? null
+}
+
+function pinchDistance(touches: TouchList): number {
+  return Math.hypot(
+    touches[0].clientX - touches[1].clientX,
+    touches[0].clientY - touches[1].clientY,
+  )
+}
+
+function onReaderTouchStart(event: TouchEvent) {
+  if (event.touches.length !== 2) return
+  pinchStartDist = pinchDistance(event.touches)
+  pinchStartScale = zoomScale
+  const video = getStreamingVideo()
+  if (!video) return
+  const rect = video.getBoundingClientRect()
+  const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left
+  const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top
+  video.style.transformOrigin = `${(midX / rect.width) * 100}% ${(midY / rect.height) * 100}%`
+}
+
+function onReaderTouchMove(event: TouchEvent) {
+  if (event.touches.length !== 2) return
+  const video = getStreamingVideo()
+  if (!video) return
+  const next = Math.min(
+    MAX_ZOOM,
+    Math.max(1, (pinchStartScale * pinchDistance(event.touches)) / (pinchStartDist || 1)),
+  )
+  zoomScale = next
+  video.style.transform = `scale(${next})`
+}
+
+function onReaderTouchEnd() {
+  pinchStartDist = 0
+}
+
+async function stopScanner() {
+  if (webScanner) {
+    await webScanner.stop()
+    webScanner = null
+  }
+}
+
+function pickImage() {
+  const input = fileInputRef.value
+  if (input) {
+    input.value = ''
+    input.click()
+  }
+}
+
+async function onImagePicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  await stopScanner()
+  scanning.value = true
+  error.value = ''
+  try {
+    const text = await scanImageText('qr-file-scan', file)
+    if (disposed) return
+    handleScannedText(text)
+  } catch {
+    error.value = t('scan.fromImageFailed')
+  } finally {
+    scanning.value = false
+  }
+}
 
 function handleScannedText(text: string) {
   const raw = text.trim()
@@ -86,16 +189,17 @@ function handleScannedText(text: string) {
 async function startScanner() {
   error.value = ''
   scanning.value = true
+  zoomScale = 1
+  disposed = false
 
-  // App 与 Web 统一走 DOM 摄像头(html5-qrcode):
-  // - WebView 内 getUserMedia 由 Capacitor Bridge 映射到系统摄像头权限,行为与手机浏览器一致
+  // App 与 Web 统一走 DOM 摄像头(getUserMedia 经 Capacitor Bridge 映射到系统摄像头权限):
+  // 自行管理高分辨率视频流并逐帧解码完整画面,以识别大型/高密度二维码。
   if (!readerRef.value) {
     error.value = t('scan.startFailed')
     scanning.value = false
     return
   }
-  const containerId = 'qr-reader'
-  webScanner = new WebScanner(containerId, (text) => {
+  webScanner = new WebScanner('qr-reader', 'qr-frame-scan', (text) => {
     handleScannedText(text)
   })
 
@@ -125,13 +229,6 @@ async function startScanner() {
   }
 }
 
-async function stopScanner() {
-  if (webScanner) {
-    await webScanner.stop()
-    webScanner = null
-  }
-}
-
 function onCancel() {
   stopScanner()
   router.back()
@@ -142,10 +239,12 @@ function onErrorConfirm() {
 }
 
 onMounted(() => {
+  disposed = false
   startScanner()
 })
 
 onUnmounted(() => {
+  disposed = true
   stopScanner()
 })
 </script>
@@ -195,6 +294,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  touch-action: none;
 }
 
 #qr-reader {
@@ -202,10 +302,14 @@ onUnmounted(() => {
   height: 100%;
 }
 
-#qr-reader video {
+#qr-reader :deep(video) {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover;
+}
+
+#qr-reader :deep(#qr-shaded-region) {
+  display: none !important;
 }
 
 .viewfinder-overlay {
@@ -223,6 +327,7 @@ onUnmounted(() => {
   border: 2px solid rgba(255, 255, 255, 0.8);
   border-radius: 12px;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+  transform: translateY(-4.5vh);
 }
 
 .error-card {
@@ -244,5 +349,43 @@ onUnmounted(() => {
   text-align: center;
   color: #999;
   font-size: 15px;
+}
+
+.image-entry {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+  transform: translateX(-50%);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(26, 26, 26, 0.9);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+.image-entry:hover {
+  background: rgba(58, 58, 58, 0.95);
+}
+
+.file-input {
+  display: none;
+}
+
+.file-scan-container {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 </style>

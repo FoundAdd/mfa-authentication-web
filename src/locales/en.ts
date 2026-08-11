@@ -97,6 +97,8 @@ export default {
     insecureContext: 'Scanning requires an HTTPS or localhost environment',
     startFailed: 'Failed to start the camera. Please retry',
     unsupported: 'Unsupported QR code content',
+    fromImage: 'Scan from image',
+    fromImageFailed: 'Could not read a QR code from the image',
     cancel: 'Cancel',
     torchOn: 'Torch on',
     torchOff: 'Torch off',
