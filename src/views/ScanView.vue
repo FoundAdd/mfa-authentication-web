@@ -33,6 +33,7 @@
       </div>
 
       <div id="qr-file-scan" class="file-scan-container" />
+      <div id="qr-frame-scan" class="file-scan-container" />
 
       <button type="button" class="image-entry" @click="pickImage">
         <el-icon><Picture /></el-icon>
@@ -73,6 +74,8 @@ const MAX_ZOOM = 5
 let zoomScale = 1
 let pinchStartDist = 0
 let pinchStartScale = 1
+
+let disposed = true
 
 function getStreamingVideo(): HTMLVideoElement | null {
   return readerContainerRef.value?.querySelector('video') ?? null
@@ -137,6 +140,7 @@ async function onImagePicked(event: Event) {
   error.value = ''
   try {
     const text = await scanImageText('qr-file-scan', file)
+    if (disposed) return
     handleScannedText(text)
   } catch {
     error.value = t('scan.fromImageFailed')
@@ -186,16 +190,16 @@ async function startScanner() {
   error.value = ''
   scanning.value = true
   zoomScale = 1
+  disposed = false
 
-  // App 与 Web 统一走 DOM 摄像头(html5-qrcode):
-  // - WebView 内 getUserMedia 由 Capacitor Bridge 映射到系统摄像头权限,行为与手机浏览器一致
+  // App 与 Web 统一走 DOM 摄像头(getUserMedia 经 Capacitor Bridge 映射到系统摄像头权限):
+  // 自行管理高分辨率视频流并逐帧解码完整画面,以识别大型/高密度二维码。
   if (!readerRef.value) {
     error.value = t('scan.startFailed')
     scanning.value = false
     return
   }
-  const containerId = 'qr-reader'
-  webScanner = new WebScanner(containerId, (text) => {
+  webScanner = new WebScanner('qr-reader', 'qr-frame-scan', (text) => {
     handleScannedText(text)
   })
 
@@ -235,10 +239,12 @@ function onErrorConfirm() {
 }
 
 onMounted(() => {
+  disposed = false
   startScanner()
 })
 
 onUnmounted(() => {
+  disposed = true
   stopScanner()
 })
 </script>
