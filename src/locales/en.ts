@@ -99,6 +99,9 @@ export default {
     unsupported: 'Unsupported QR code content',
     fromImage: 'Scan from image',
     fromImageFailed: 'Could not read a QR code from the image',
+    batchProgress: 'Scanned {current}/{total} QR codes',
+    batchNextCamera: 'Scan the next QR code',
+    batchNextImage: 'Pick the next QR code image',
     cancel: 'Cancel',
     torchOn: 'Torch on',
     torchOff: 'Torch off',
@@ -142,6 +145,7 @@ export default {
   },
   migration: {
     title: 'Batch import',
+    unknownIssuer: 'Unknown service',
     subtitle: 'Parsed {count} account(s) from the migration QR code',
     none: 'No usable accounts found',
     selectAll: 'Select all',

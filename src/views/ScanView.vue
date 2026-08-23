@@ -14,7 +14,7 @@
         <el-button type="primary" @click="onErrorConfirm">{{ t('common.confirm') }}</el-button>
       </div>
 
-      <div v-else-if="!scanning && !error" class="init-card">
+      <div v-else-if="!scanning && !error && !batchActive" class="init-card">
         <p>{{ t('scan.detecting') }}</p>
       </div>
 
@@ -30,6 +30,21 @@
         <div class="viewfinder-overlay">
           <div class="viewfinder-frame" />
         </div>
+      </div>
+
+      <div v-if="batchActive" class="batch-banner">
+        <el-progress
+          :percentage="batchPercent"
+          :stroke-width="6"
+          :show-text="false"
+          class="batch-progress"
+        />
+        <p class="batch-text">
+          {{ t('scan.batchProgress', { current: batchCollected, total: batchTotal }) }}
+        </p>
+        <p class="batch-hint">
+          {{ batchFromImage ? t('scan.batchNextImage') : t('scan.batchNextCamera') }}
+        </p>
       </div>
 
       <div id="qr-file-scan" class="file-scan-container" />
@@ -52,12 +67,18 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Picture, Warning } from '@element-plus/icons-vue'
 import { WebScanner, WebScanError, scanImageText } from '@/services/webScanner'
 import { parseOtpUri, OtpUriError } from '@/services/otpauth-uri'
+import {
+  parseGaMigrationChunk,
+  GaBatchCollector,
+  setPendingMigrationAccounts,
+  type GaMigrationChunk,
+} from '@/services/ga-migration'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -68,7 +89,19 @@ const readerRef = ref<HTMLElement | null>(null)
 const readerContainerRef = ref<HTMLElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
+const batchActive = ref(false)
+const batchCollected = ref(0)
+const batchTotal = ref(0)
+const batchFromImage = ref(false)
+
 let webScanner: WebScanner | null = null
+let batchCollector: GaBatchCollector | null = null
+
+const batchPercent = computed(() =>
+  batchTotal.value > 0
+    ? Math.round((batchCollected.value / batchTotal.value) * 100)
+    : 0,
+)
 
 const MAX_ZOOM = 5
 let zoomScale = 1
@@ -141,7 +174,7 @@ async function onImagePicked(event: Event) {
   try {
     const text = await scanImageText('qr-file-scan', file)
     if (disposed) return
-    handleScannedText(text)
+    handleScannedText(text, 'image')
   } catch {
     error.value = t('scan.fromImageFailed')
   } finally {
@@ -149,21 +182,18 @@ async function onImagePicked(event: Event) {
   }
 }
 
-function handleScannedText(text: string) {
+function handleScannedText(text: string, source: 'camera' | 'image' = 'camera') {
   const raw = text.trim()
   const lower = raw.toLowerCase()
   if (lower.startsWith('otpauth-migration://')) {
-    stopScanner()
-    router.push({
-      path: '/migrate',
-      query: { data: raw },
-    })
+    handleMigrationText(raw, source)
     return
   }
   if (!lower.startsWith('otpauth://totp/')) {
     error.value = t('scan.unsupported')
     return
   }
+  resetBatch()
   try {
     const parsed = parseOtpUri(raw)
     const params = new URLSearchParams({
@@ -186,8 +216,53 @@ function handleScannedText(text: string) {
   }
 }
 
+function handleMigrationText(raw: string, source: 'camera' | 'image') {
+  let chunk: GaMigrationChunk
+  try {
+    chunk = parseGaMigrationChunk(raw)
+  } catch {
+    error.value = t('scan.unsupported')
+    return
+  }
+
+  if (chunk.batchSize <= 1) {
+    // 单个二维码即可包含全部账号,直接进入预览
+    stopScanner()
+    router.push({ path: '/migrate', query: { data: raw } })
+    return
+  }
+
+  // 多二维码分批导出:按 batchIndex 逐个收集,集齐后合并再预览
+  if (!batchCollector) batchCollector = new GaBatchCollector()
+  const result = batchCollector.add(chunk)
+  batchCollected.value = result.collected
+  batchTotal.value = result.total
+  batchFromImage.value = source === 'image'
+
+  if (result.complete && result.accounts) {
+    setPendingMigrationAccounts(result.accounts)
+    stopScanner()
+    router.push('/migrate')
+    return
+  }
+
+  batchActive.value = true
+}
+
+function resetBatch() {
+  batchActive.value = false
+  batchCollected.value = 0
+  batchTotal.value = 0
+  batchFromImage.value = false
+  if (batchCollector) {
+    batchCollector.reset()
+    batchCollector = null
+  }
+}
+
 async function startScanner() {
   error.value = ''
+  resetBatch()
   scanning.value = true
   zoomScale = 1
   disposed = false
@@ -230,6 +305,7 @@ async function startScanner() {
 }
 
 function onCancel() {
+  resetBatch()
   stopScanner()
   router.back()
 }
@@ -245,6 +321,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   disposed = true
+  resetBatch()
   stopScanner()
 })
 </script>
@@ -349,6 +426,37 @@ onUnmounted(() => {
   text-align: center;
   color: #999;
   font-size: 15px;
+}
+
+.batch-banner {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(320px, 88vw);
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: rgba(26, 26, 26, 0.92);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+
+.batch-banner .batch-progress {
+  margin-bottom: 10px;
+}
+
+.batch-banner .batch-text {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.batch-banner .batch-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #bbb;
 }
 
 .image-entry {

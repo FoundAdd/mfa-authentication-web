@@ -29,6 +29,7 @@
     "localforage": "^1.10.0",
     "otpauth": "^9.4.0",
     "pinia": "^3.0.2",
+    "protobufjs": "^8.7.2",
     "vite-plugin-pwa": "^1.0.0",
     "vue": "^3.5.13",
     "vue-i18n": "^11.1.2",
