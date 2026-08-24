@@ -99,6 +99,9 @@ export default {
     unsupported: '不支持的二维码内容',
     fromImage: '选择图片识别',
     fromImageFailed: '无法从图片中识别二维码',
+    batchProgress: '已识别 {current}/{total} 个二维码',
+    batchNextCamera: '请继续扫描下一个二维码',
+    batchNextImage: '请继续选择下一张二维码图片',
     cancel: '取消',
     torchOn: '开灯',
     torchOff: '关灯',
@@ -142,6 +145,7 @@ export default {
   },
   migration: {
     title: '批量导入',
+    unknownIssuer: '未知服务',
     subtitle: '从迁移二维码中解析出 {count} 个账号',
     none: '未解析出可用条目',
     selectAll: '全选',

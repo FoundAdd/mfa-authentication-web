@@ -24,6 +24,7 @@
 4. Google Authenticator 迁移解析 `src/services/ga-migration.ts`:
    - 解析 `otpauth-migration://offline?data=<base64 protobuf>`
    - 支持 protobuf 手工解码 (fields: secret/type/algorithm/idigits/profile_issuer/profile_name),不引入额外 protobuf 库
+   - issuer 回退 (2026-08-24): 条目缺失 issuer 时,`name` 含 `Issuer:Label` 前缀则拆分为 issuer+label,纯名称直接作为服务名展示 (GA 中重命名过的条目导出时仅含 name)
 5. 批量预览选择页: 解析结果列表可勾选 → 确认 → 走合并规则导入
 6. 无法识别内容统一提示"不支持的二维码内容"
 
@@ -35,5 +36,6 @@
 - [x] 覆盖模式二次确认与替换行为正确
 - [x] GA 官方 App 导出的 fixture (至少含 3 条目、含 SHA1/SHA256、6/8 位) 解析正确
 - [x] Vitest 覆盖: 信封加解密往返、合并去重、GA protobuf 解析、非法格式分支
+- [x] GA 重命名条目 (仅 name 无 issuer) 导入后按名称作为服务名展示,含 `Issuer:Label` 格式的 name 正确拆分 (2026-08-24)
 
-## 状态: 已完成 (2026-08-06)
+## 状态: 已完成 (2026-08-06,issuer 回退优化 2026-08-24)

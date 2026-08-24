@@ -1,4 +1,5 @@
 import type { OtpAlgorithm } from './otpMigration'
+import * as protobuf from 'protobufjs'
 
 export interface ParsedGaAccount {
   issuer: string
@@ -7,6 +8,19 @@ export interface ParsedGaAccount {
   algorithm: OtpAlgorithm
   digits: number
   period: number
+}
+
+/**
+ * 单个迁移二维码解析结果。Google Authenticator 在账号较多时会拆成多个
+ * 二维码,每个二维码都携带 batch 元信息(batchSize/batchIndex/batchId),
+ * 需全部扫完后按 batchIndex 排序合并再导入。
+ */
+export interface GaMigrationChunk {
+  accounts: ParsedGaAccount[]
+  version: number
+  batchSize: number
+  batchIndex: number
+  batchId: number
 }
 
 export class GaMigrationError extends Error {
@@ -68,78 +82,78 @@ function bytesToBase32(bytes: Uint8Array): string {
   return out
 }
 
-// ---- protobuf 手工解码 ----
-function readVarint(view: DataView, pos: number): { value: number; next: number } {
-  let result = 0
-  let shift = 0
-  let offset = pos
-  while (offset < view.byteLength) {
-    const byte = view.getUint8(offset)
-    offset++
-    result |= (byte & 0x7f) << shift
-    if ((byte & 0x80) === 0) break
-    shift += 7
-    if (shift > 53) throw new GaMigrationError('varint too long')
+const GOOGLE_AUTHENTICATOR_PROTO = `
+syntax = "proto3";
+
+message MigrationPayload {
+  enum Algorithm {
+    ALGORITHM_UNSPECIFIED = 0;
+    ALGORITHM_SHA1 = 1;
+    ALGORITHM_SHA256 = 2;
+    ALGORITHM_SHA512 = 3;
+    ALGORITHM_MD5 = 4;
   }
-  return { value: result >>> 0, next: offset }
-}
 
-interface RawField {
-  field: number
-  wireType: number
-  // depends on wireType
-  varint?: number
-  bytes?: Uint8Array
-}
-
-function decodeFields(bytes: Uint8Array): RawField[] {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-  let pos = 0
-  const fields: RawField[] = []
-  while (pos < view.byteLength) {
-    const tag = readVarint(view, pos)
-    pos = tag.next
-    const field = tag.value >> 3
-    const wireType = tag.value & 0x7
-    const rec: RawField = { field, wireType }
-    if (wireType === 0) {
-      const v = readVarint(view, pos)
-      pos = v.next
-      rec.varint = v.value >>> 0
-    } else if (wireType === 2) {
-      const len = readVarint(view, pos)
-      pos = len.next
-      const start = pos
-      const end = start + len.value
-      if (end > view.byteLength) throw new Error('length overrun')
-      rec.bytes = bytes.slice(start, end)
-      pos = end
-    } else {
-      // 仅支持 varint 与 length-delimited;其余跳过分组(wire type 1/5 定长)
-      pos += wireType === 1 ? 8 : wireType === 5 ? 4 : 0
-    }
-    fields.push(rec)
+  enum OtpType {
+    OTP_TYPE_UNSPECIFIED = 0;
+    OTP_TYPE_HOTP = 1;
+    OTP_TYPE_TOTP = 2;
   }
-  return fields
+
+  enum DigitCount {
+    DIGIT_COUNT_UNSPECIFIED = 0;
+    DIGIT_COUNT_SIX = 1;
+    DIGIT_COUNT_EIGHT = 2;
+  }
+
+  message OtpParameters {
+    bytes secret = 1;
+    string name = 2;
+    string issuer = 3;
+    Algorithm algorithm = 4;
+    DigitCount digits = 5;
+    OtpType type = 6;
+    int64 counter = 7;
+  }
+
+  repeated OtpParameters otp_parameters = 1;
+  int32 version = 2;
+  int32 batch_size = 3;
+  int32 batch_index = 4;
+  int32 batch_id = 5;
+}
+`
+
+interface DecodedOtpParameters {
+  secret?: Uint8Array
+  name?: string
+  issuer?: string
+  algorithm?: number
+  digits?: number
+  type?: number
+  counter?: number | protobuf.Long
 }
 
-const SECRET = 1
-const TYPE = 2
-const ALGORITHM = 3
-const DIGITS = 4
-const PERIOD = 5
-const ISSUER = 6
-const PROFILE_ISSUER = 10
-const PROFILE_NAME = 11
+interface DecodedMigrationPayload {
+  otpParameters?: DecodedOtpParameters[]
+  version?: number
+  batchSize?: number
+  batchIndex?: number
+  batchId?: number
+}
 
-const OTP_PARAMETERS = 1
+const migrationPayloadType = protobuf.parse(
+  GOOGLE_AUTHENTICATOR_PROTO,
+).root.lookupType('MigrationPayload')
 
 /**
- * 解析 `otpauth-migration://offline?data=<base64 protobuf>` 批量迁移内容。
- * 支持 TOTP,SHA1/SHA256/SHA512,6/8/自定义 digits 与 period。
+ * 解析单个 `otpauth-migration://offline?data=<base64 protobuf>` 迁移二维码。
+ * 返回其中的账号与 batch 元信息。
+ * 支持 TOTP,SHA1/SHA256/SHA512,6/8 digits。Google Authenticator 迁移协议
+ * 不携带 period,统一按 TOTP 默认 30 秒处理。HOTP 类型会被忽略。
  * HOTP 或不支持的算法类型将被忽略。
  */
-export function parseGaMigration(input: string): ParsedGaAccount[] {
+export function parseGaMigrationChunk(input: string): GaMigrationChunk {
   const raw = input.trim()
   if (!raw.toLowerCase().startsWith('otpauth-migration://')) {
     throw new GaMigrationError('unsupported content', 'unsupported')
@@ -161,58 +175,65 @@ export function parseGaMigration(input: string): ParsedGaAccount[] {
     throw new GaMigrationError('invalid data encoding')
   }
 
-  let payloadFields: RawField[]
+  let decoded: DecodedMigrationPayload
   try {
-    payloadFields = decodeFields(payloadBytes)
+    decoded = migrationPayloadType.decode(
+      payloadBytes,
+    ) as unknown as DecodedMigrationPayload
   } catch {
     throw new GaMigrationError('malformed protobuf')
   }
 
-  const accounts: ParsedGaAccount[] = []
-  for (const f of payloadFields) {
-    if (f.field === OTP_PARAMETERS && f.wireType === 2 && f.bytes) {
-      const parsed = parseOtpParameter(f.bytes)
-      if (parsed) accounts.push(parsed)
-    }
-  }
+  const accounts: ParsedGaAccount[] = (decoded.otpParameters ?? [])
+    .map(parseOtpParameter)
+    .filter((account): account is ParsedGaAccount => account !== null)
+
   if (accounts.length === 0) {
     throw new GaMigrationError('no usable accounts')
   }
-  return accounts
+
+  return {
+    accounts,
+    version: decoded.version ?? 1,
+    batchSize: decoded.batchSize && decoded.batchSize > 0 ? decoded.batchSize : 1,
+    batchIndex: decoded.batchIndex ?? 0,
+    batchId: decoded.batchId ?? 0,
+  }
 }
 
-function parseOtpParameter(bytes: Uint8Array): ParsedGaAccount | null {
-  let fields: RawField[]
-  try {
-    fields = decodeFields(bytes)
-  } catch {
-    return null
-  }
-  const type = fields.find((f) => f.field === TYPE)?.varint ?? 1
-  if (type !== 1) return null // 仅支持 TOTP
+/**
+ * 解析 `otpauth-migration://...` 批量迁移内容并返回其中的账号。
+ * 兼容旧入口,仅返回单个二维码携带的账号(不合并 batch)。
+ */
+export function parseGaMigration(input: string): ParsedGaAccount[] {
+  return parseGaMigrationChunk(input).accounts
+}
 
-  const secretField = fields.find((f) => f.field === SECRET && f.bytes)
-  if (!secretField) return null
-  const secret = bytesToBase32(secretField.bytes!)
+function parseOtpParameter(param: DecodedOtpParameters): ParsedGaAccount | null {
+  const type = param.type ?? 0
+  if (type !== 0 && type !== 2) return null // 仅支持 TOTP,兼容省略 type 的旧导出。
 
-  const algRaw = fields.find((f) => f.field === ALGORITHM)?.varint ?? 1
+  const secretBytes = param.secret
+  if (!secretBytes || secretBytes.length === 0) return null
+  const secret = bytesToBase32(secretBytes)
+
+  const algRaw = param.algorithm ?? 1
   const algorithm: OtpAlgorithm = algRaw === 2 ? 'SHA256' : algRaw === 3 ? 'SHA512' : 'SHA1'
-  const digits = fields.find((f) => f.field === DIGITS)?.varint ?? 6
-  const period = fields.find((f) => f.field === PERIOD)?.varint ?? 30
+  // Google Authenticator 导出的是 DigitCount 枚举:1 表示 6 位,2 表示 8 位。
+  const digits = param.digits === 2 ? 8 : 6
 
-  const text = (b?: Uint8Array): string =>
-    b ? new TextDecoder().decode(b) : ''
-  const issuerBytes = text(fields.find((f) => f.field === ISSUER)?.bytes)
-  const profileIssuer = text(fields.find((f) => f.field === PROFILE_ISSUER)?.bytes)
-  const profileName = text(fields.find((f) => f.field === PROFILE_NAME)?.bytes)
-
-  let issuer = issuerBytes || profileIssuer
-  let label = profileName
+  let issuer = param.issuer ?? ''
+  let label = param.name ?? ''
   if (!issuer && label) {
     const colon = label.indexOf(':')
     if (colon >= 0) {
       issuer = label.slice(0, colon)
       label = label.slice(colon + 1)
+    } else {
+      // GA 中重命名过的条目导出时只有 name 没有 issuer,把该名称直接作为
+      // 服务名展示,与 GA 列表"仅有名称就只显示名称"的行为保持一致。
+      issuer = label
+      label = ''
     }
   }
 
@@ -221,7 +242,85 @@ function parseOtpParameter(bytes: Uint8Array): ParsedGaAccount | null {
     label: label ?? '',
     secret,
     algorithm,
-    digits: digits > 0 ? digits : 6,
-    period: period > 0 ? period : 30,
+    digits,
+    period: 30,
   }
+}
+
+export interface GaBatchCollectResult {
+  complete: boolean
+  accounts: ParsedGaAccount[] | null
+  collected: number
+  total: number
+}
+
+/**
+ * 分批迁移二维码收集器。Google Authenticator 拆分的每个二维码携带
+ * 相同的 batchId 与 batchSize,以及各自唯一的 batchIndex(0 起)。
+ * 依次把每个分片的账号放入对应索引,收集齐后按索引顺序合并。
+ */
+export class GaBatchCollector {
+  private batchId: number | null = null
+  private batchSize = 1
+  private chunks = new Map<number, ParsedGaAccount[]>()
+
+  add(chunk: GaMigrationChunk): GaBatchCollectResult {
+    if (
+      this.batchId === null ||
+      this.batchId !== chunk.batchId ||
+      this.batchSize !== chunk.batchSize
+    ) {
+      // 新的一批导出(不同 batchId / batchSize),重置收集状态
+      this.batchId = chunk.batchId
+      this.batchSize = chunk.batchSize
+      this.chunks.clear()
+    }
+    this.chunks.set(chunk.batchIndex, chunk.accounts)
+    const collected = this.chunks.size
+    if (this.isComplete()) {
+      const accounts = this.merge()
+      const total = this.batchSize
+      this.reset()
+      return { complete: true, accounts, collected, total }
+    }
+    return { complete: false, accounts: null, collected, total: this.batchSize }
+  }
+
+  private isComplete(): boolean {
+    if (this.chunks.size < this.batchSize) return false
+    for (let i = 0; i < this.batchSize; i++) {
+      if (!this.chunks.has(i)) return false
+    }
+    return true
+  }
+
+  private merge(): ParsedGaAccount[] {
+    const out: ParsedGaAccount[] = []
+    for (let i = 0; i < this.batchSize; i++) {
+      const acc = this.chunks.get(i)
+      if (acc) out.push(...acc)
+    }
+    return out
+  }
+
+  reset(): void {
+    this.batchId = null
+    this.batchSize = 1
+    this.chunks.clear()
+  }
+}
+
+// ---- 合并结果暂存(跨页面传递) ----
+let pendingAccounts: ParsedGaAccount[] | null = null
+
+/** 批量合并完成后暂存账号列表,供预览页读取。 */
+export function setPendingMigrationAccounts(accounts: ParsedGaAccount[]): void {
+  pendingAccounts = accounts
+}
+
+/** 取出暂存的合并账号列表(取后清空),没有则返回 null。 */
+export function takePendingMigrationAccounts(): ParsedGaAccount[] | null {
+  const accounts = pendingAccounts
+  pendingAccounts = null
+  return accounts
 }
