@@ -21,6 +21,8 @@ const OTHER_URL =
   'otpauth-migration://offline?data=CiIKCkhlbGxvId6tvu8SB3hAeS5jb20aBU90aGVyIAEoATACEAIYAiiJBg'
 const NO_ISSUER_URL =
   'otpauth-migration://offline?data=ChkKCmFiY2RlZmdoaWoSBWFsaWNlIAEoATAC'
+const RENAMED_COLON_URL =
+  'otpauth-migration://offline?data=CiAKCkFBQUFBQUFBQUESDklzc3VlcjI6TGFiZWwyIAEoAQ%3D%3D'
 
 describe('parseGaMigration', () => {
   it('parses the official-format fixture with SHA1/SHA256/SHA512 and 6/8 digits', () => {
@@ -119,11 +121,18 @@ describe('parseGaMigrationChunk', () => {
     expect(single.accounts).toHaveLength(1)
   })
 
-  it('maps DigitCount enum values and preserves a missing issuer', () => {
+  it('maps DigitCount enum values and falls back to name as issuer', () => {
     const accounts = parseGaMigration(NO_ISSUER_URL)
     expect(accounts[0].digits).toBe(6)
-    expect(accounts[0].issuer).toBe('')
-    expect(accounts[0].label).toBe('alice')
+    // GA 中重命名过的条目只有 name 没有 issuer,名称直接作为服务名展示
+    expect(accounts[0].issuer).toBe('alice')
+    expect(accounts[0].label).toBe('')
+  })
+
+  it('splits a renamed "Issuer:Label" name when issuer field is absent', () => {
+    const accounts = parseGaMigration(RENAMED_COLON_URL)
+    expect(accounts[0].issuer).toBe('Issuer2')
+    expect(accounts[0].label).toBe('Label2')
   })
 })
 

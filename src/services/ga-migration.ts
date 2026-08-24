@@ -229,6 +229,11 @@ function parseOtpParameter(param: DecodedOtpParameters): ParsedGaAccount | null 
     if (colon >= 0) {
       issuer = label.slice(0, colon)
       label = label.slice(colon + 1)
+    } else {
+      // GA 中重命名过的条目导出时只有 name 没有 issuer,把该名称直接作为
+      // 服务名展示,与 GA 列表"仅有名称就只显示名称"的行为保持一致。
+      issuer = label
+      label = ''
     }
   }
 
