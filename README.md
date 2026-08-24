@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS user_data (
 ### 模块 3: 扫码导入功能 (适合 Hybrid Agent)
 **任务目标**: 实现通过扫描二维码导入密钥。
 **具体要求**:
-1.  解析标准 OTP URI: `otpauth://totp/Issuer:label?secret=XXX&issuer=Issuer`。
+1.  解析标准 OTP URI: `otpauth://totp/Issuer:label?secret=XXX&issuer=Issuer`;无 issuer 参数且账号名不含 `Issuer:` 前缀时,整个账号名直接作为服务名(与 Google Authenticator 显示行为一致)。
 2.  **手动输入添加**: 与扫码并列的新增入口。表单:issuer(必填)、label(可留空)、secret(必填,粘贴自动去空格转大写,实时 Base32 合法性校验);高级选项默认折叠(algorithm 默认 SHA1、digits 默认 6、period 默认 30)。保存前**试算一次当前 TOTP 展示预览**;扫码结果解析出的参数同样允许在保存前编辑修正。
 3.  **编辑条目**: 除 secret 外所有字段可编辑(secret 只读);保存前同样试算 TOTP 预览。
 4.  **Web 端扫码**: 使用 `getUserMedia` 自建高分辨率视频流(1920×1080 ideal),逐帧抓取完整画面解码,避免 html5-qrcode 取景框裁剪(≤420px)导致的大型二维码识别失败。注意浏览器需 HTTPS 环境且需用户授权摄像头。
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS user_data (
     *   **手势变焦 (类微信)**: 扫码区域设置 `touch-action: none` 阻止浏览器整页缩放与双指手势;双指捏合时对 `<video>` 元素做 CSS `scale()` 变换实现画面放大(1–5 倍,以捏合中心为缩放原点),TopBar、取景框、按钮等 UI 保持原位不入镜。
     *   **全帧高分辨率解码**: 自建相机循环,快速档(≤640px)保证常规二维码响应速度,深度档(≤1920px,每 4 帧)与多级降采样兜底配合,彻底解决大型/高密度二维码识别问题。
     *   **图片导入多级降采样**: 单张图片按原图分辨率解码,失败后自动降采样(2048→1400→1024→720→512)重试,覆盖大分辨率/超大尺寸 canvas 导致解码失败的场景。
-6.  **批量导入 (Google Authenticator 迁移)**: 解析 `otpauth-migration://offline?...` protobuf 格式,解析出多条目后进入**预览选择页**(列表勾选),确认后按模块 2 的合并规则导入;无法识别的格式提示"不支持的二维码内容"。Microsoft Authenticator 无公开批量导出格式,其迁移走标准单条 `otpauth://` 扫码(已覆盖),README/帮助文案注明。
+6.  **批量导入 (Google Authenticator 迁移)**: 解析 `otpauth-migration://offline?...` protobuf 格式,解析出多条目后进入**预览选择页**(列表勾选),确认后按模块 2 的合并规则导入;条目缺失 issuer 时,`name` 含 `Issuer:Label` 前缀则拆分,纯名称直接作为服务名展示(避免显示"未知服务");无法识别的格式提示"不支持的二维码内容"。Microsoft Authenticator 无公开批量导出格式,其迁移走标准单条 `otpauth://` 扫码(已覆盖),README/帮助文案注明。
 7.  **删除确认交互**: 单删需二次确认弹窗(显示 issuer + label);删除分组弹窗含勾选框"同时删除分组内条目",默认未勾选,未勾选时条目移入"未分组",勾选时连同删除。批量选择模式:长按条目进入多选,顶部"已选 N 项"与操作栏(移动到分组/删除/取消)。
 ### 模块 4: Cloudflare Workers 后端 (Phase 2,本次不开发)
 见 3.3 预留设计。Phase 1 不创建 Worker、D1、同步接口与同步 UI。

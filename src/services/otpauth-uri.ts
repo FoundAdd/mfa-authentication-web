@@ -42,6 +42,7 @@ function toNumber(value: string | null, fallback: number): number {
  * 容错规则:
  *  - label 缺省时按空字符串处理,issuer 优先取 `issuer` 参数;
  *  - `issuer` 参数与路径中的 issuer 冲突时,以参数为准;
+ *  - 无 issuer 且账号名不含 "Issuer:" 前缀时,整个账号名作为 issuer(label 清空);
  *  - 未知参数忽略;algorithm/digits/period 缺失或非法时回退默认值;
  *  - 非 otpauth://totp/ 协议抛 OtpUriError('unsupported')。
  */
@@ -74,14 +75,22 @@ export function parseOtpUri(input: string): ParsedOtpUri {
   const issuerParam = url.searchParams.get('issuer')
   const colonIndex = account.indexOf(':')
   const pathIssuer = colonIndex >= 0 ? account.slice(0, colonIndex) : ''
-  const label = colonIndex >= 0 ? account.slice(colonIndex + 1) : account
+  let label = colonIndex >= 0 ? account.slice(colonIndex + 1) : account
 
   const algorithm = ALGORITHMS[(url.searchParams.get('algorithm') ?? '').toUpperCase()] ?? 'SHA1'
   const digits = toNumber(url.searchParams.get('digits'), 6)
   const period = toNumber(url.searchParams.get('period'), 30)
 
   let issuer = issuerParam ?? pathIssuer
-  if (!issuer && !label) issuer = account
+  if (!issuer && label) {
+    // 无 issuer 参数且路径无 "Issuer:" 前缀时,把整个账号名作为服务名,
+    // 与 Google Authenticator"仅有名称就只显示名称"的行为保持一致。
+    issuer = label
+    label = ''
+  }
+  if (!issuer) {
+    issuer = account
+  }
 
   return {
     issuer,

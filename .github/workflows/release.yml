@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      commit_hash:
+        description: '用于构建的 commit hash'
+        required: true
+        type: string
+
+env:
+  BUILD_COMMIT: ${{ inputs.commit_hash || github.sha }}
 
 permissions:
   contents: write
@@ -14,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BUILD_COMMIT }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -29,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BUILD_COMMIT }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -72,6 +85,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BUILD_COMMIT }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -31,7 +31,7 @@
         >
           <el-checkbox :model-value="selected.has(index)" @click.stop @change="toggle(index)" />
           <div class="account-info">
-            <div class="issuer">{{ account.issuer || t('group.ungrouped') }}</div>
+            <div class="issuer">{{ account.issuer || t('migration.unknownIssuer') }}</div>
             <div class="label">{{ account.label }}</div>
           </div>
           <div class="meta">{{ account.algorithm }} · {{ account.digits }} 位 · {{ account.period }}s</div>
@@ -58,7 +58,7 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { useTotpStore } from '@/stores/totp'
-import { parseGaMigration, GaMigrationError } from '@/services/ga-migration'
+import { parseGaMigration, GaMigrationError, takePendingMigrationAccounts } from '@/services/ga-migration'
 import { mergeData } from '@/services/backup'
 import type { ParsedGaAccount } from '@/services/ga-migration'
 import type { TotpData } from '@/types'
@@ -127,6 +127,11 @@ async function confirm() {
 }
 
 onMounted(() => {
+  const buffered = takePendingMigrationAccounts()
+  if (buffered) {
+    accounts.value = buffered
+    return
+  }
   const data = typeof route.query.data === 'string' ? route.query.data : ''
   if (!data) {
     error.value = t('scan.unsupported')

@@ -29,11 +29,11 @@ describe('parseOtpUri', () => {
     expect(result.label).toBe('alice@gmail.com')
   })
 
-  it('handles label without colon AND no issuer param', () => {
+  it('uses bare account name as issuer when no colon and no issuer param', () => {
     const uri = 'otpauth://totp/alice%40gmail.com?secret=JBSWY3DPEHPK3PXP'
     const result = parseOtpUri(uri)
-    expect(result.issuer).toBe('')
-    expect(result.label).toBe('alice@gmail.com')
+    expect(result.issuer).toBe('alice@gmail.com')
+    expect(result.label).toBe('')
   })
 
   it('uses path issuer when no issuer param', () => {

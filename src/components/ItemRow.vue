@@ -20,7 +20,7 @@
     <AvatarIcon :issuer="item.issuer" :size="40" />
 
     <div class="meta">
-      <div class="issuer">{{ item.issuer }}</div>
+      <div class="issuer">{{ item.issuer || t('migration.unknownIssuer') }}</div>
       <div v-if="item.label" class="label">{{ item.label }}</div>
     </div>
 
