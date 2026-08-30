@@ -13,6 +13,10 @@ import pt from './pt'
 import nl from './nl'
 import ar from './ar'
 
+// en 与 zh-CN 是完整维护的基准语言;其余语言允许暂时缺失条目,
+// 缺失的条目由 vue-i18n 的 fallbackLocale: 'en' 回退为英文显示
+const BASE_LOCALES = ['en', 'zh-CN'] as const
+
 const messages: Record<string, unknown> = {
   'zh-CN': zhCN,
   'en': en,
@@ -46,27 +50,37 @@ function placeholders(text: string): string[] {
 }
 
 describe('locales', () => {
-  it('每个支持的语言都有语言包且键结构与 en 完全一致', () => {
-    const enLeaves = flattenLeaves(en)
-    for (const locale of SUPPORTED_LOCALES) {
-      const msgs = messages[locale]
-      expect(msgs, `缺少语言包: ${locale}`).toBeDefined()
-      const leaves = flattenLeaves(msgs)
-      expect(Object.keys(leaves).sort(), `${locale} 键不一致`).toEqual(
-        Object.keys(enLeaves).sort(),
-      )
+  it('基准语言 en 与 zh-CN 键结构完全一致且无空条目', () => {
+    const enKeys = Object.keys(flattenLeaves(en)).sort()
+    expect(enKeys.length, '基准语言 en 不能为空').toBeGreaterThan(0)
+    for (const locale of BASE_LOCALES) {
+      const leaves = flattenLeaves(messages[locale])
+      expect(Object.keys(leaves).sort(), `${locale} 键与 en 不一致`).toEqual(enKeys)
       for (const [key, value] of Object.entries(leaves)) {
         expect(value.trim(), `${locale}.${key} 为空`).not.toBe('')
       }
     }
   })
 
-  it('每个键的插值占位符与 en 一致', () => {
+  it('其余语言是 en 的子集,不允许出现 en 没有的键', () => {
+    const enKeys = new Set(Object.keys(flattenLeaves(en)))
+    for (const locale of SUPPORTED_LOCALES) {
+      if ((BASE_LOCALES as readonly string[]).includes(locale)) continue
+      const msgs = messages[locale]
+      expect(msgs, `缺少语言包: ${locale}`).toBeDefined()
+      for (const key of Object.keys(flattenLeaves(msgs))) {
+        expect(enKeys.has(key), `${locale} 含 en 中不存在的键 ${key}`).toBe(true)
+      }
+    }
+  })
+
+  it('已有条目不为空且插值占位符与 en 一致(缺失条目回退 en)', () => {
     const enLeaves = flattenLeaves(en)
     for (const locale of SUPPORTED_LOCALES) {
       const leaves = flattenLeaves(messages[locale])
       for (const [key, value] of Object.entries(leaves)) {
-        expect(placeholders(value), `${locale}.${key} 占位符不一致`).toEqual(
+        expect(value.trim(), `${locale}.${key} 为空`).not.toBe('')
+        expect(placeholders(value), `${locale}.${key} 占位符与 en 不一致`).toEqual(
           placeholders(enLeaves[key]),
         )
       }
