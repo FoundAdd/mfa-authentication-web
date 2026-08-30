@@ -42,63 +42,87 @@
 
     <EmptyGuide v-if="isEmpty && !searchActive" />
 
-    <div v-else-if="!searchActive || hasVisibleResults" class="list">
-      <div v-if="visibleUngrouped.length > 0" class="ungrouped-section">
-        <div class="section-label">{{ t('group.ungrouped') }}</div>
-        <div class="group-body">
-          <draggable
-            v-model="ungroupedList"
-            :disabled="dragActive"
-            handle=".drag-handle"
-            :animation="200"
-            item-key="id"
-            @end="onUngroupedDragEnd"
-          >
-            <template #item="{ element }">
-              <ItemRow
-                :item="element"
-                :batch-mode="batchMode"
-                :selected="selected.has(element.id)"
-                @toggle="onItemToggle(element)"
-                @longpress="onItemLongPress(element)"
-                @menu="(action) => onItemMenuAction(element, null, action)"
-              />
-            </template>
-          </draggable>
-        </div>
-      </div>
-
-      <draggable
-        v-model="groupList"
-        :disabled="dragActive"
-        handle=".group-grip"
-        :animation="200"
-        item-key="group.id"
-        class="group-sort"
-        @end="persistGroupOrder"
-      >
-        <template #item="{ element }">
-          <GroupCard
-            :group="element.group"
-            :expanded="element.expanded"
-            :batch-mode="batchMode"
-            :search-active="searchActive"
-            :selected-ids="selected"
-            @toggle="toggleGroup(element.group)"
-            @rename="renameGroup(element.group)"
-            @delete="openGroupDelete(element.group)"
-            @item-toggle="onItemToggle"
-            @item-long-press="onItemLongPress"
-            @item-menu="(item, action) => onItemMenuAction(item, element.group.id, action)"
-            @item-drag-end="onItemDragEnd(element.group.id)"
-          />
-        </template>
-      </draggable>
-    </div>
-
-    <div v-else class="empty-state">
+    <div v-else-if="searchActive && visibleRows.length === 0" class="empty-state">
       <p>{{ t('empty.noMatch', { query: searchQuery }) }}</p>
     </div>
+
+    <template v-else>
+      <div class="filter-bar">
+        <el-select v-model="activeFilter" class="group-select">
+          <el-option :value="ALL_FILTER" :label="t('group.all')" />
+          <el-option :value="UNGROUPED_FILTER" :label="t('group.ungrouped')" />
+          <el-option
+            v-for="g in totpStore.data.groups"
+            :key="g.id"
+            :value="g.id"
+            :label="g.name"
+          />
+        </el-select>
+        <el-dropdown
+          v-if="activeGroup"
+          trigger="click"
+          @command="onGroupMenu"
+        >
+          <span class="filter-more">
+            <el-icon><MoreFilled /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="rename">
+                {{ t('group.rename') }}
+              </el-dropdown-item>
+              <el-dropdown-item command="up" :disabled="!canMoveUp">
+                {{ t('group.moveUp') }}
+              </el-dropdown-item>
+              <el-dropdown-item command="down" :disabled="!canMoveDown">
+                {{ t('group.moveDown') }}
+              </el-dropdown-item>
+              <el-dropdown-item command="delete" divided>
+                {{ t('group.deleteGroup') }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+
+      <div class="list">
+        <draggable
+          v-if="singleContainer"
+          v-model="filteredItems"
+          :disabled="batchMode"
+          handle=".drag-handle"
+          :animation="200"
+          item-key="id"
+        >
+          <template #item="{ element }">
+            <ItemRow
+              :item="element"
+              :batch-mode="batchMode"
+              :selected="selected.has(element.id)"
+              @toggle="onItemToggle(element)"
+              @longpress="onItemLongPress(element)"
+              @menu="(action) => onItemMenuAction(element, currentGroupId, action)"
+            />
+          </template>
+        </draggable>
+        <template v-else>
+          <ItemRow
+            v-for="row in visibleRows"
+            :key="row.item.id"
+            :item="row.item"
+            :group-tag="row.groupName"
+            :batch-mode="batchMode"
+            :selected="selected.has(row.item.id)"
+            @toggle="onItemToggle(row.item)"
+            @longpress="onItemLongPress(row.item)"
+            @menu="(action) => onItemMenuAction(row.item, row.groupId, action)"
+          />
+        </template>
+        <p v-if="!searchActive && visibleRows.length === 0" class="empty-hint">
+          {{ t('totp.emptyGroup') }}
+        </p>
+      </div>
+    </template>
 
     <BatchBar
       v-if="batchMode"
@@ -169,20 +193,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
-import { Camera, FolderAdd, Plus, Search, Setting, Upload } from '@element-plus/icons-vue'
+import {
+  Camera,
+  FolderAdd,
+  MoreFilled,
+  Plus,
+  Search,
+  Setting,
+} from '@element-plus/icons-vue'
 import { useTotpStore, type ItemRef } from '@/stores/totp'
 import type { TotpGroup, TotpItem } from '@/types'
-import GroupCard from '@/components/GroupCard.vue'
 import ItemRow from '@/components/ItemRow.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import BatchBar from '@/components/BatchBar.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import ResponsiveDialog from '@/components/ResponsiveDialog.vue'
+
+const ALL_FILTER = '__all__'
+const UNGROUPED_FILTER = '__ungrouped__'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -191,6 +224,8 @@ const totpStore = useTotpStore()
 const batchMode = ref(false)
 const selected = ref<Set<string>>(new Set())
 const settingsVisible = ref(false)
+// 列表分组筛选:'__all__'(全部) / '__ungrouped__'(未分组) / 分组 id
+const activeFilter = ref<string>(ALL_FILTER)
 
 const moveVisible = ref(false)
 const groupDeleteVisible = ref(false)
@@ -211,7 +246,6 @@ const isEmpty = computed(
     totpStore.data.groups.length === 0 &&
     totpStore.data.ungrouped.length === 0,
 )
-const dragActive = computed(() => batchMode.value || searchActive.value)
 
 function itemMatches(item: TotpItem): boolean {
   const q = searchQuery.value
@@ -221,62 +255,105 @@ function itemMatches(item: TotpItem): boolean {
   )
 }
 
-interface VisibleGroupEntry {
-  group: TotpGroup
-  expanded: boolean
+interface RowEntry {
+  item: TotpItem
+  groupId: string | null
+  groupName: string
 }
 
-const visibleGroups = computed<VisibleGroupEntry[]>(() => {
-  const q = searchQuery.value
-  const result: VisibleGroupEntry[] = []
+// 扁平行列表:分组条目按分组顺序在前,未分组条目固定排在最后
+const allRows = computed<RowEntry[]>(() => {
+  const rows: RowEntry[] = []
   for (const group of totpStore.data.groups) {
-    if (!q) {
-      result.push({ group, expanded: group.isExpanded })
-      continue
-    }
-    const groupMatch = group.name.toLowerCase().includes(q)
-    let hasVisibleItems = false
-    if (groupMatch) {
-      hasVisibleItems = true
-    } else {
-      hasVisibleItems = group.items.some(itemMatches)
-    }
-    if (hasVisibleItems) {
-      result.push({ group, expanded: true })
+    for (const item of group.items) {
+      rows.push({ item, groupId: group.id, groupName: group.name })
     }
   }
-  return result
+  for (const item of totpStore.data.ungrouped) {
+    rows.push({ item, groupId: null, groupName: t('group.ungrouped') })
+  }
+  return rows
 })
 
-const groupList = computed<VisibleGroupEntry[]>({
-  get: () => visibleGroups.value,
-  set: (entries) => {
-    totpStore.reorderGroups(entries.map((e) => e.group.id))
-  },
+const visibleRows = computed<RowEntry[]>(() => {
+  const q = searchQuery.value
+  if (q) {
+    // 搜索跨分组进行,分组名命中时展示该分组全部条目
+    return allRows.value.filter(
+      (row) =>
+        itemMatches(row.item) ||
+        (row.groupId !== null && row.groupName.toLowerCase().includes(q)),
+    )
+  }
+  if (activeFilter.value === ALL_FILTER) return allRows.value
+  if (activeFilter.value === UNGROUPED_FILTER) {
+    return allRows.value.filter((row) => row.groupId === null)
+  }
+  return allRows.value.filter((row) => row.groupId === activeFilter.value)
 })
 
-const visibleUngrouped = computed<TotpItem[]>(() => {
-  if (!searchActive.value) return totpStore.data.ungrouped
-  return totpStore.data.ungrouped.filter(itemMatches)
-})
+// 仅在多分组共存的视图(全部/搜索)下展示分组名标注
+const singleContainer = computed(
+  () => !searchActive.value && activeFilter.value !== ALL_FILTER,
+)
 
-const ungroupedList = computed<TotpItem[]>({
-  get: () => visibleUngrouped.value,
-  set: (value) => {
-    if (!searchActive.value) {
-      totpStore.data.ungrouped = value
+const filteredItems = computed<TotpItem[]>({
+  get: () => visibleRows.value.map((row) => row.item),
+  set: (items) => {
+    if (activeFilter.value === UNGROUPED_FILTER) {
+      totpStore.data.ungrouped = items
+    } else if (activeFilter.value !== ALL_FILTER) {
+      const group = totpStore.data.groups.find((g) => g.id === activeFilter.value)
+      if (group) group.items = items
     }
   },
 })
 
-const hasVisibleResults = computed(
-  () => visibleGroups.value.length > 0 || visibleUngrouped.value.length > 0,
+const activeGroup = computed<TotpGroup | null>(() => {
+  if (activeFilter.value === ALL_FILTER || activeFilter.value === UNGROUPED_FILTER) {
+    return null
+  }
+  return (
+    totpStore.data.groups.find((g) => g.id === activeFilter.value) ?? null
+  )
+})
+
+const currentGroupId = computed(() =>
+  activeGroup.value ? activeGroup.value.id : null,
 )
 
-function toggleGroup(group: TotpGroup) {
-  if (searchActive.value) return
-  if (group.items.length === 0) return
-  group.isExpanded = !group.isExpanded
+const groupIndex = computed(() =>
+  totpStore.data.groups.findIndex((g) => g.id === activeFilter.value),
+)
+const canMoveUp = computed(() => groupIndex.value > 0)
+const canMoveDown = computed(
+  () =>
+    groupIndex.value !== -1 &&
+    groupIndex.value < totpStore.data.groups.length - 1,
+)
+
+// 当前筛选的分组被删除(或被导入覆盖)时回退到"全部",避免停留在失效筛选上
+watch(
+  () => totpStore.data.groups.map((g) => g.id),
+  (ids) => {
+    if (
+      activeFilter.value !== ALL_FILTER &&
+      activeFilter.value !== UNGROUPED_FILTER &&
+      !ids.includes(activeFilter.value)
+    ) {
+      activeFilter.value = ALL_FILTER
+    }
+  },
+)
+
+// ---- group menu ----
+function onGroupMenu(command: string) {
+  const group = activeGroup.value
+  if (!group) return
+  if (command === 'rename') void renameGroup(group)
+  else if (command === 'delete') openGroupDelete(group)
+  else if (command === 'up') totpStore.moveGroup(group.id, -1)
+  else if (command === 'down') totpStore.moveGroup(group.id, 1)
 }
 
 // ---- batch ----
@@ -423,20 +500,6 @@ async function confirmBatchDelete() {
   }
 }
 
-// ---- drag end ----
-function onItemDragEnd(groupId: string) {
-  const group = totpStore.data.groups.find((g) => g.id === groupId)
-  if (group) totpStore.reorderItems(groupId, group.items.map((i) => i.id))
-}
-
-function onUngroupedDragEnd() {
-  totpStore.reorderItems(null, totpStore.data.ungrouped.map((i) => i.id))
-}
-
-function persistGroupOrder() {
-  totpStore.reorderGroups(totpStore.data.groups.map((g) => g.id))
-}
-
 // ---- add / rename group ----
 async function promptAddGroup() {
   try {
@@ -536,29 +599,34 @@ onMounted(async () => {
   padding: 4px 8px 8px;
 }
 
-.list {
-  padding: 4px 0;
-}
-
-.group-sort {
+.filter-bar {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 10px;
 }
 
-.ungrouped-section {
-  margin-bottom: 8px;
+.group-select {
+  width: min(240px, 62vw);
 }
 
-.section-label {
-  padding: 8px 14px 4px;
-  font-size: 13px;
+.filter-more {
+  display: flex;
+  align-items: center;
   color: #909399;
+  cursor: pointer;
+  padding: 6px;
 }
 
-.group-body {
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
+.list {
+  padding: 0;
+}
+
+.empty-hint {
+  text-align: center;
+  color: #909399;
+  padding: 48px 16px;
+  font-size: 14px;
 }
 
 .empty-state p {

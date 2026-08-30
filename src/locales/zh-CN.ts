@@ -48,6 +48,7 @@ export default {
     reset: '清空并重置',
   },
   group: {
+    all: '全部',
     ungrouped: '未分组',
     addGroup: '添加分组',
     deleteGroup: '删除分组',
@@ -57,6 +58,8 @@ export default {
     renamePlaceholder: '请输入分组名称',
     deleteGroupConfirm: '确定要删除分组“{name}”吗？',
     count: '{count} 项',
+    moveUp: '上移分组',
+    moveDown: '下移分组',
   },
   empty: {
     title: '没有更多密钥了',

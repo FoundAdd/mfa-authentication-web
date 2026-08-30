@@ -48,6 +48,7 @@ export default {
     reset: 'Clear & reset',
   },
   group: {
+    all: 'All',
     ungrouped: 'Ungrouped',
     addGroup: 'Add Group',
     deleteGroup: 'Delete Group',
@@ -57,6 +58,8 @@ export default {
     renamePlaceholder: 'Enter a group name',
     deleteGroupConfirm: 'Are you sure you want to delete group "{name}"?',
     count: '{count} items',
+    moveUp: 'Move Up',
+    moveDown: 'Move Down',
   },
   empty: {
     title: 'No more keys',

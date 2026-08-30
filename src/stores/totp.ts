@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import type { TotpData, TotpItem, TotpGroup } from '@/types'
 import { createId } from '@/utils/uuid'
 import * as storage from '@/services/storage'
@@ -46,7 +46,10 @@ export const useTotpStore = defineStore('totp', () => {
   }
 
   let persistTimer: ReturnType<typeof setTimeout> | null = null
+  // init() 水合期间由存储加载的数据不需要立即回写
+  let hydrating = false
   function schedulePersist() {
+    if (hydrating) return
     if (persistTimer) return
     persistTimer = setTimeout(() => {
       persistTimer = null
@@ -69,7 +72,10 @@ export const useTotpStore = defineStore('totp', () => {
       }
       loaded = emptyData()
     }
+    hydrating = true
     data.value = loaded
+    await nextTick()
+    hydrating = false
     const itemCount =
       loaded.ungrouped.length +
       loaded.groups.reduce((sum, g) => sum + g.items.length, 0)
@@ -129,6 +135,14 @@ export const useTotpStore = defineStore('totp', () => {
     data.value.groups = groupIds
       .map((id) => byId.get(id))
       .filter((g): g is TotpGroup => g !== undefined)
+  }
+
+  function moveGroup(groupId: string, direction: -1 | 1) {
+    const idx = data.value.groups.findIndex((g) => g.id === groupId)
+    const swap = idx + direction
+    if (idx === -1 || swap < 0 || swap >= data.value.groups.length) return
+    const groups = data.value.groups
+    ;[groups[idx], groups[swap]] = [groups[swap], groups[idx]]
   }
 
   // ---- items ----
@@ -215,6 +229,7 @@ export const useTotpStore = defineStore('totp', () => {
     removeGroup,
     renameGroup,
     reorderGroups,
+    moveGroup,
     addItem,
     removeItem,
     batchRemove,

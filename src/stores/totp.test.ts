@@ -82,6 +82,36 @@ describe('batch move', () => {
   })
 })
 
+describe('moveGroup', () => {
+  it('swaps a group with its neighbor when moving up or down', () => {
+    const store = useTotpStore()
+    const a = store.addGroup('A')
+    const b = store.addGroup('B')
+    const c = store.addGroup('C')
+
+    store.moveGroup(c.id, -1)
+    expect(store.data.groups.map((g) => g.name)).toEqual(['A', 'C', 'B'])
+
+    store.moveGroup(a.id, -1)
+    // 已在顶部,移动无效
+    expect(store.data.groups.map((g) => g.name)).toEqual(['A', 'C', 'B'])
+
+    store.moveGroup(a.id, 1)
+    expect(store.data.groups.map((g) => g.name)).toEqual(['C', 'A', 'B'])
+
+    store.moveGroup(b.id, 1)
+    // 已在底部,移动无效
+    expect(store.data.groups.map((g) => g.name)).toEqual(['C', 'A', 'B'])
+  })
+
+  it('no-ops for unknown group id', () => {
+    const store = useTotpStore()
+    store.addGroup('A')
+    store.moveGroup('missing', -1)
+    expect(store.data.groups.map((g) => g.name)).toEqual(['A'])
+  })
+})
+
 describe('corruption detection', () => {
   it('flags corrupted when device key is cleared', async () => {
     const store = useTotpStore()
