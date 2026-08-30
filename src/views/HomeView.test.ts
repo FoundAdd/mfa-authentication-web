@@ -64,8 +64,12 @@ function rowTags(w: VueWrapper): (string | undefined)[] {
   return rowWrappers(w).map((row) => row.props('groupTag'))
 }
 
-function selectFilter(w: VueWrapper, value: string) {
+function selectFilters(w: VueWrapper, value: string[]) {
   w.findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', value)
+}
+
+function selectFilter(w: VueWrapper, value: string) {
+  selectFilters(w, [value])
 }
 
 beforeEach(async () => {
@@ -330,6 +334,71 @@ describe('HomeView 分组列表', () => {
 
     expect(rowWrappers(w)).toHaveLength(0)
     expect(w.find('.empty-hint').text()).toBe('该分组暂无条目')
+  })
+
+  it('复选多个分组时展示所选分组条目并集,并保留分组名标注', async () => {
+    const store = useTotpStore()
+    const gA = store.addGroup('工作')
+    store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
+    const gB = store.addGroup('个人')
+    store.addItem(gB.id, item('Google', 'b', 'KRSXG5CTMVRXEZLU'))
+    store.addItem(null, item('Apple', 'c', 'MFRGGZDFMZTWQ2LK'))
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    selectFilters(w, [gA.id, gB.id])
+    await nextTick()
+
+    expect(rowIssuers(w)).toEqual(['GitHub', 'Google'])
+    expect(rowTags(w)).toEqual(['工作', '个人'])
+
+    // 分组与未分组混选,顺序仍为分组在前、未分组最后
+    selectFilters(w, [gB.id, '__ungrouped__'])
+    await nextTick()
+
+    expect(rowIssuers(w)).toEqual(['Google', 'Apple'])
+    expect(rowTags(w)).toEqual(['个人', '未分组'])
+  })
+
+  it('"全部"与具体分组互斥:新勾选全部替换原选择,在全部基础上勾选分组则移除全部', async () => {
+    const store = useTotpStore()
+    const gA = store.addGroup('工作')
+    store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
+    const gB = store.addGroup('个人')
+    store.addItem(gB.id, item('Google', 'b', 'KRSXG5CTMVRXEZLU'))
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    // 在"全部"基础上勾选具体分组 → "全部"被移除,仅剩该分组
+    selectFilters(w, ['__all__', gA.id])
+    await nextTick()
+    expect(rowIssuers(w)).toEqual(['GitHub'])
+
+    // 新勾选"全部" → 替换为仅"全部"
+    selectFilters(w, ['__all__', gB.id])
+    await nextTick()
+    expect(rowIssuers(w)).toEqual(['GitHub', 'Google'])
+    expect(rowTags(w)).toEqual(['工作', '个人'])
+  })
+
+  it('清空选择后回退到全部视图', async () => {
+    const store = useTotpStore()
+    const gA = store.addGroup('工作')
+    store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    selectFilters(w, [])
+    await nextTick()
+
+    expect(rowIssuers(w)).toEqual(['GitHub'])
+    expect(rowTags(w)).toEqual(['工作'])
   })
 
   it('删除当前筛选的分组后自动回退到全部视图', async () => {

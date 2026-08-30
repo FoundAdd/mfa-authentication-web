@@ -51,7 +51,14 @@
 
     <template v-else>
       <div class="filter-bar">
-        <el-select v-model="activeFilter" class="group-select">
+        <el-select
+          :model-value="activeFilters"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          class="group-select"
+          @update:model-value="onFiltersUpdate"
+        >
           <el-option :value="ALL_FILTER" :label="t('group.all')" />
           <el-option :value="UNGROUPED_FILTER" :label="t('group.ungrouped')" />
           <el-option
@@ -227,8 +234,9 @@ const totpStore = useTotpStore()
 const batchMode = ref(false)
 const selected = ref<Set<string>>(new Set())
 const settingsVisible = ref(false)
-// 列表分组筛选:'__all__'(全部) / '__ungrouped__'(未分组) / 分组 id
-const activeFilter = ref<string>(ALL_FILTER)
+// 列表分组筛选(下拉复选):'__all__'(全部,与其他选项互斥) /
+// '__ungrouped__'(未分组) / 分组 id,可同时勾选多个
+const activeFilters = ref<string[]>([ALL_FILTER])
 
 const moveVisible = ref(false)
 const groupDeleteVisible = ref(false)
@@ -278,6 +286,28 @@ const allRows = computed<RowEntry[]>(() => {
   return rows
 })
 
+/**
+ * 归一化多选结果:
+ *  - 清空 → 回退到"全部";
+ *  - 新勾选"全部" → 只保留"全部";
+ *  - 在"全部"基础上勾选具体分组 → 移除"全部"。
+ */
+function normalizeFilters(next: string[], prev: string[]): string[] {
+  if (next.length === 0) return [ALL_FILTER]
+  const hadAll = prev.includes(ALL_FILTER)
+  const hasAll = next.includes(ALL_FILTER)
+  if (hasAll && !hadAll) return [ALL_FILTER]
+  if (hasAll && hadAll && next.length > 1) {
+    return next.filter((v) => v !== ALL_FILTER)
+  }
+  return next
+}
+
+function onFiltersUpdate(value: unknown) {
+  const next = Array.isArray(value) ? value.map(String) : [String(value)]
+  activeFilters.value = normalizeFilters(next, activeFilters.value)
+}
+
 const visibleRows = computed<RowEntry[]>(() => {
   const q = searchQuery.value
   if (q) {
@@ -288,36 +318,43 @@ const visibleRows = computed<RowEntry[]>(() => {
         (row.groupId !== null && row.groupName.toLowerCase().includes(q)),
     )
   }
-  if (activeFilter.value === ALL_FILTER) return allRows.value
-  if (activeFilter.value === UNGROUPED_FILTER) {
-    return allRows.value.filter((row) => row.groupId === null)
-  }
-  return allRows.value.filter((row) => row.groupId === activeFilter.value)
+  if (activeFilters.value.includes(ALL_FILTER)) return allRows.value
+  const picked = new Set(activeFilters.value)
+  return allRows.value.filter((row) =>
+    row.groupId === null
+      ? picked.has(UNGROUPED_FILTER)
+      : picked.has(row.groupId),
+  )
 })
 
-// 仅在多分组共存的视图(全部/搜索)下展示分组名标注
+// 仅单一容器(恰好只选了一个分组/未分组)时隐藏分组标注并启用拖拽排序
 const singleContainer = computed(
-  () => !searchActive.value && activeFilter.value !== ALL_FILTER,
+  () =>
+    !searchActive.value &&
+    activeFilters.value.length === 1 &&
+    activeFilters.value[0] !== ALL_FILTER,
 )
 
 const filteredItems = computed<TotpItem[]>({
   get: () => visibleRows.value.map((row) => row.item),
   set: (items) => {
-    if (activeFilter.value === UNGROUPED_FILTER) {
+    if (!singleContainer.value) return
+    const filter = activeFilters.value[0]
+    if (filter === UNGROUPED_FILTER) {
       totpStore.data.ungrouped = items
-    } else if (activeFilter.value !== ALL_FILTER) {
-      const group = totpStore.data.groups.find((g) => g.id === activeFilter.value)
+    } else {
+      const group = totpStore.data.groups.find((g) => g.id === filter)
       if (group) group.items = items
     }
   },
 })
 
 const activeGroup = computed<TotpGroup | null>(() => {
-  if (activeFilter.value === ALL_FILTER || activeFilter.value === UNGROUPED_FILTER) {
-    return null
-  }
+  if (activeFilters.value.length !== 1) return null
+  const id = activeFilters.value[0]
+  if (id === ALL_FILTER || id === UNGROUPED_FILTER) return null
   return (
-    totpStore.data.groups.find((g) => g.id === activeFilter.value) ?? null
+    totpStore.data.groups.find((g) => g.id === id) ?? null
   )
 })
 
@@ -326,7 +363,7 @@ const currentGroupId = computed(() =>
 )
 
 const groupIndex = computed(() =>
-  totpStore.data.groups.findIndex((g) => g.id === activeFilter.value),
+  totpStore.data.groups.findIndex((g) => g.id === activeGroup.value?.id),
 )
 const canMoveUp = computed(() => groupIndex.value > 0)
 const canMoveDown = computed(
@@ -335,16 +372,15 @@ const canMoveDown = computed(
     groupIndex.value < totpStore.data.groups.length - 1,
 )
 
-// 当前筛选的分组被删除(或被导入覆盖)时回退到"全部",避免停留在失效筛选上
+// 当前筛选的分组被删除(或被导入覆盖)时剔除失效选项,避免停留在失效筛选上
 watch(
   () => totpStore.data.groups.map((g) => g.id),
   (ids) => {
-    if (
-      activeFilter.value !== ALL_FILTER &&
-      activeFilter.value !== UNGROUPED_FILTER &&
-      !ids.includes(activeFilter.value)
-    ) {
-      activeFilter.value = ALL_FILTER
+    const valid = activeFilters.value.filter(
+      (v) => v === ALL_FILTER || v === UNGROUPED_FILTER || ids.includes(v),
+    )
+    if (valid.length !== activeFilters.value.length) {
+      activeFilters.value = valid.length > 0 ? valid : [ALL_FILTER]
     }
   },
 )
