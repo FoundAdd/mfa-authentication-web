@@ -29,8 +29,6 @@ export default {
     language: 'Language',
     followSystem: 'Follow System',
     data: 'Data',
-    zhCN: '简体中文',
-    en: 'English',
   },
   totp: {
     noResults: 'No results found',

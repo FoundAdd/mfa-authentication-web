@@ -7,17 +7,19 @@
   >
     <div class="settings-body">
       <div class="settings-label">{{ t('settings.language') }}</div>
-      <el-radio-group
+      <el-select
         :model-value="settingStore.locale"
-        class="language-options"
+        class="language-select"
         @update:model-value="onLocaleChange"
       >
-        <el-radio value="follow-system">
-          {{ t('settings.followSystem') }}
-        </el-radio>
-        <el-radio value="zh-CN">{{ t('settings.zhCN') }}</el-radio>
-        <el-radio value="en">{{ t('settings.en') }}</el-radio>
-      </el-radio-group>
+        <el-option value="follow-system" :label="t('settings.followSystem')" />
+        <el-option
+          v-for="loc in SUPPORTED_LOCALES"
+          :key="loc"
+          :value="loc"
+          :label="LOCALE_NATIVE_NAMES[loc]"
+        />
+      </el-select>
 
       <div class="divider" />
 
@@ -50,7 +52,8 @@ import { useI18n } from 'vue-i18n'
 import { Upload, Download } from '@element-plus/icons-vue'
 import { useSettingStore } from '@/stores/settings'
 import { useTotpStore } from '@/stores/totp'
-import type { LocaleType } from '@/locales'
+import { SUPPORTED_LOCALES, LOCALE_NATIVE_NAMES } from '@/locales'
+import type { LocalePreference } from '@/locales'
 import ResponsiveDialog from './ResponsiveDialog.vue'
 import ExportDialog from './ExportDialog.vue'
 
@@ -72,7 +75,7 @@ const itemCount = computed(
     totpStore.data.groups.reduce((sum, g) => sum + g.items.length, 0),
 )
 
-function onLocaleChange(value: LocaleType | 'follow-system') {
+function onLocaleChange(value: LocalePreference) {
   void settingStore.setLocalePreference(value)
 }
 </script>
@@ -89,11 +92,8 @@ function onLocaleChange(value: LocaleType | 'follow-system') {
   color: #606266;
 }
 
-.language-options {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+.language-select {
+  width: 100%;
 }
 
 .divider {
