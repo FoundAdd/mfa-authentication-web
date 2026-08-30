@@ -4,6 +4,9 @@
       <template v-if="batchMode">
         <span class="batch-title">{{ t('common.selected', { count: selected.size }) }}</span>
         <span class="spacer" />
+        <el-button text @click="toggleSelectAll">
+          {{ allVisibleSelected ? t('common.unselectAll') : t('common.selectAll') }}
+        </el-button>
         <el-button text @click="exitBatch">{{ t('common.cancel') }}</el-button>
       </template>
       <template v-else>
@@ -370,13 +373,32 @@ function buildItemRefs(ids: Set<string>): ItemRef[] {
   return refs
 }
 
+// 区间选择锚点:进入多选/最近一次点选的行
+const anchorId = ref<string | null>(null)
+
 function onItemLongPress(item: TotpItem) {
-  if (batchMode.value) return
-  batchMode.value = true
-  selected.value.add(item.id)
+  if (!batchMode.value) {
+    batchMode.value = true
+    selected.value = new Set([item.id])
+    anchorId.value = item.id
+    return
+  }
+  // 已在多选模式:从锚点行到长按行做区间选择(按当前视图内的显示顺序)
+  const ids = visibleRows.value.map((row) => row.item.id)
+  const from = ids.indexOf(anchorId.value ?? '')
+  const to = ids.indexOf(item.id)
+  if (from === -1 || to === -1) {
+    // 锚点不在当前视图(如切换过分组筛选),退化为单选该行
+    selected.value.add(item.id)
+    anchorId.value = item.id
+    return
+  }
+  const [start, end] = from <= to ? [from, to] : [to, from]
+  for (let i = start; i <= end; i++) selected.value.add(ids[i])
 }
 
 function onItemToggle(item: TotpItem) {
+  anchorId.value = item.id
   if (selected.value.has(item.id)) {
     selected.value.delete(item.id)
     if (selected.value.size === 0) batchMode.value = false
@@ -385,9 +407,25 @@ function onItemToggle(item: TotpItem) {
   }
 }
 
+const allVisibleSelected = computed(
+  () =>
+    visibleRows.value.length > 0 &&
+    visibleRows.value.every((row) => selected.value.has(row.item.id)),
+)
+
+function toggleSelectAll() {
+  if (allVisibleSelected.value) {
+    for (const row of visibleRows.value) selected.value.delete(row.item.id)
+    if (selected.value.size === 0) batchMode.value = false
+  } else {
+    for (const row of visibleRows.value) selected.value.add(row.item.id)
+  }
+}
+
 function exitBatch() {
   batchMode.value = false
   selected.value = new Set()
+  anchorId.value = null
 }
 
 function onItemMenuAction(

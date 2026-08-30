@@ -95,7 +95,7 @@ const LONG_PRESS_MS = 500
 let suppressClick = false
 
 function onPressStart() {
-  if (props.batchMode) return
+  // 批量模式下长按用于区间选择,同样需要监听
   if (pressTimer) return
   pressTimer = setTimeout(() => {
     pressTimer = null

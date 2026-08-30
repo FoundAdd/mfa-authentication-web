@@ -12,6 +12,8 @@ export default {
     search: '搜索',
     move: '移动',
     back: '返回',
+    selectAll: '全选',
+    unselectAll: '全不选',
     selected: '已选 {count} 项',
     inputs: '{issuer} - {label}',
     exitApp: '退出应用',

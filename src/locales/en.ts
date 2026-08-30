@@ -12,6 +12,8 @@ export default {
     search: 'Search',
     move: 'Move',
     back: 'Back',
+    selectAll: 'Select all',
+    unselectAll: 'Deselect all',
     selected: '{count} selected',
     inputs: '{issuer} - {label}',
     exitApp: 'Exit App',

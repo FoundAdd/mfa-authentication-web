@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper, type DOMWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
@@ -81,6 +81,154 @@ afterEach(async () => {
   wrapper = null
   // 取消未落地的防抖持久化,避免跨测试污染存储
   await useTotpStore().saveNow()
+})
+
+describe('HomeView 多选模式', () => {
+  function batchCount(w: VueWrapper): number | null {
+    const el = w.find('.batch-title')
+    if (!el.exists()) return null
+    const match = el.text().match(/(\d+)/)
+    return match ? Number(match[1]) : null
+  }
+
+  function findButtonByText(w: VueWrapper, text: string): DOMWrapper<Element> {
+    const button = w.findAll('button').find((b) => b.text() === text)
+    expect(button, `button "${text}" not found`).toBeDefined()
+    return button!
+  }
+
+  function seedFiveInOneGroup(store: ReturnType<typeof useTotpStore>) {
+    const gA = store.addGroup('工作')
+    store.addItem(gA.id, item('A', 'a', 'JBSWY3DPEHPK3PXP'))
+    store.addItem(gA.id, item('B', 'b', 'KRSXG5CTMVRXEZLU'))
+    store.addItem(gA.id, item('C', 'c', 'MFRGGZDFMZTWQ2LK'))
+    store.addItem(gA.id, item('D', 'd', 'MZXW6YTBOI======'))
+    store.addItem(null, item('E', 'e', 'GEZDGNBVGY3TQOJQ'))
+    return gA
+  }
+
+  it('长按进入多选后,再次长按另一行可区间选择', async () => {
+    const store = useTotpStore()
+    seedFiveInOneGroup(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    const rows = rowWrappers(w)
+    rows[0].vm.$emit('longpress')
+    await nextTick()
+    expect(batchCount(w)).toBe(1)
+
+    rows[3].vm.$emit('longpress')
+    await nextTick()
+    expect(batchCount(w)).toBe(4)
+  })
+
+  it('区间选择支持从后往前(锚点在后,长按在前)', async () => {
+    const store = useTotpStore()
+    seedFiveInOneGroup(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    const rows = rowWrappers(w)
+    rows[4].vm.$emit('longpress')
+    await nextTick()
+    rows[2].vm.$emit('longpress')
+    await nextTick()
+    expect(batchCount(w)).toBe(3)
+  })
+
+  it('全选按钮选中当前视图全部条目,再次点击取消并退出多选', async () => {
+    const store = useTotpStore()
+    seedFiveInOneGroup(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    rowWrappers(w)[0].vm.$emit('longpress')
+    await nextTick()
+
+    findButtonByText(w, '全选').trigger('click')
+    await nextTick()
+    expect(batchCount(w)).toBe(5)
+
+    findButtonByText(w, '全不选').trigger('click')
+    await nextTick()
+    expect(batchCount(w)).toBeNull()
+  })
+
+  it('切换分组筛选后全选仅作用于当前视图,且已选条目跨筛选保留', async () => {
+    const store = useTotpStore()
+    const gA = seedFiveInOneGroup(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    selectFilter(w, gA.id)
+    await nextTick()
+    expect(rowWrappers(w)).toHaveLength(4)
+
+    rowWrappers(w)[0].vm.$emit('longpress')
+    await nextTick()
+    expect(batchCount(w)).toBe(1)
+
+    findButtonByText(w, '全选').trigger('click')
+    await nextTick()
+    expect(batchCount(w)).toBe(4)
+
+    // 切回全部视图:已选的 4 项保留,不会丢失
+    selectFilter(w, '__all__')
+    await nextTick()
+    expect(batchCount(w)).toBe(4)
+  })
+
+  it('锚点不在当前视图时长按退化为单选', async () => {
+    const store = useTotpStore()
+    const gA = seedFiveInOneGroup(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    // 在全部视图以最后一行(未分组)为锚点
+    rowWrappers(w)[4].vm.$emit('longpress')
+    await nextTick()
+    expect(batchCount(w)).toBe(1)
+
+    // 切到分组视图,锚点行不可见 → 长按仅单选该行
+    selectFilter(w, gA.id)
+    await nextTick()
+    rowWrappers(w)[0].vm.$emit('longpress')
+    await nextTick()
+    expect(batchCount(w)).toBe(2)
+  })
+
+  it('点选行会更新区间锚点', async () => {
+    const store = useTotpStore()
+    seedFiveInOneGroup(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    const rows = rowWrappers(w)
+    rows[0].vm.$emit('longpress')
+    await nextTick()
+
+    rows[1].vm.$emit('toggle')
+    await nextTick()
+    expect(batchCount(w)).toBe(2)
+
+    // 锚点已更新为 B,长按 E 时应选中 B..E 而非 A..E
+    rows[4].vm.$emit('longpress')
+    await nextTick()
+    expect(batchCount(w)).toBe(5)
+  })
 })
 
 describe('HomeView 分组列表', () => {
