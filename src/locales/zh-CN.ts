@@ -31,8 +31,6 @@ export default {
     language: '语言',
     followSystem: '跟随系统',
     data: '数据管理',
-    zhCN: '简体中文',
-    en: 'English',
   },
   totp: {
     noResults: '未找到匹配结果',

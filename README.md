@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS user_data (
 4.  实现分组管理 UI:可折叠的分组列表;组内条目排序与分组排序使用 `vuedraggable` 拖拽;**不做条目跨分组拖动**("未分组"条目置顶展示);新增条目追加末尾。空分组点击展开无反应(不渲染占位容器)。
 5.  实现全局搜索过滤:匹配 issuer / label / 分组名,大小写不敏感子串匹配;命中的分组临时展开,清空搜索恢复原展开状态;无结果显示空态文案(中英文)。
 6.  首次启动无任何数据时显示引导视图:三个大按钮"扫码添加 / 手动添加 / 从文件导入",附简介文案(中英文)。
-7.  i18n:首启按 `navigator.language` 自动选择(`zh-*` → 简体中文,其余 → English);设置页可手动切换并持久化,提供"跟随系统"选项。Phase 1 设置页仅含语言切换。
+7.  i18n:首启按 `navigator.language` 自动选择(精确匹配语言包,否则按主语言子标签匹配,无命中时回退 English);支持简体中文、English、日本語、한국어、Deutsch、Français、Italiano、Español、Русский、Português、Nederlands、العربية 共 12 种语言;设置页可手动切换并持久化,提供"跟随系统"选项;语言名以各自母语展示,Element Plus 组件文案同步切换。en 与 zh-CN 为完整维护的基准语言,其余语言允许暂时缺失条目、由 `fallbackLocale: 'en'` 回退英文;语言包一致性由 `src/locales/locales.test.ts` 守护。
 ### 模块 2: 核心逻辑与本地存储 (适合 Logic Agent)
 **任务目标**: 实现 TOTP 实时计算、本地数据持久化、本地静态加密及文件导入导出。
 **具体要求**:

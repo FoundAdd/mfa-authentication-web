@@ -10,14 +10,40 @@
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingStore } from '@/stores/settings'
+import type { LocaleType } from '@/locales'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
+import ja from 'element-plus/es/locale/lang/ja'
+import ko from 'element-plus/es/locale/lang/ko'
+import de from 'element-plus/es/locale/lang/de'
+import fr from 'element-plus/es/locale/lang/fr'
+import it from 'element-plus/es/locale/lang/it'
+import es from 'element-plus/es/locale/lang/es'
+import ru from 'element-plus/es/locale/lang/ru'
+import pt from 'element-plus/es/locale/lang/pt'
+import nl from 'element-plus/es/locale/lang/nl'
+import ar from 'element-plus/es/locale/lang/ar'
 
 const { locale } = useI18n()
 const settingStore = useSettingStore()
 
+const elementLocales: Record<LocaleType, typeof en> = {
+  'zh-CN': zhCn,
+  'en': en,
+  'ja': ja,
+  'ko': ko,
+  'de': de,
+  'fr': fr,
+  'it': it,
+  'es': es,
+  'ru': ru,
+  'pt': pt,
+  'nl': nl,
+  'ar': ar,
+}
+
 const elementLocale = computed(() => {
-  return locale.value === 'zh-CN' ? zhCn : en
+  return elementLocales[locale.value as LocaleType] ?? en
 })
 
 onMounted(() => {
