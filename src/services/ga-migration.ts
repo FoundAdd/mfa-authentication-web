@@ -1,4 +1,6 @@
 import type { OtpAlgorithm } from './otpMigration'
+import type { TotpData } from '@/types'
+import { normalizeSecret } from './totp'
 import * as protobuf from 'protobufjs'
 
 export interface ParsedGaAccount {
@@ -323,4 +325,151 @@ export function takePendingMigrationAccounts(): ParsedGaAccount[] | null {
   const accounts = pendingAccounts
   pendingAccounts = null
   return accounts
+}
+
+// ---- 导出编码(本应用 → GA 兼容迁移二维码) ----
+
+/** 二维码导出每页(每个二维码)携带的账号数。GA 默认 10,按需求缩小到 5-8。 */
+export const QR_EXPORT_PAGE_SIZE = 6
+
+function base32ToBytes(input: string): Uint8Array {
+  let bits = 0
+  let buffer = 0
+  const out: number[] = []
+  for (const ch of input.toUpperCase()) {
+    const val = BASE32_ALPHABET.indexOf(ch)
+    if (val === -1) continue
+    buffer = (buffer << 5) | val
+    bits += 5
+    if (bits >= 8) {
+      bits -= 8
+      out.push((buffer >> bits) & 0xff)
+    }
+  }
+  return new Uint8Array(out)
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
+
+function randomBatchId(): number {
+  const buf = new Uint32Array(1)
+  crypto.getRandomValues(buf)
+  // 保持正数,与 GA 生成的 batch_id 行为一致
+  return buf[0] & 0x7fffffff
+}
+
+function algorithmToEnum(algorithm: OtpAlgorithm): number {
+  if (algorithm === 'SHA256') return 2
+  if (algorithm === 'SHA512') return 3
+  return 1
+}
+
+function digitsToEnum(digits: number): number {
+  // 迁移格式 DigitCount 枚举只支持 6/8,其余按 6 处理
+  return digits === 8 ? 2 : 1
+}
+
+function buildMigrationUri(
+  accounts: ParsedGaAccount[],
+  meta: { batchSize: number; batchIndex: number; batchId: number },
+): string {
+  const payload = {
+    otpParameters: accounts.map((account) => ({
+      secret: base32ToBytes(normalizeSecret(account.secret)),
+      name: account.label,
+      issuer: account.issuer,
+      algorithm: algorithmToEnum(account.algorithm),
+      digits: digitsToEnum(account.digits),
+      type: 2, // OTP_TYPE_TOTP
+    })),
+    version: 1,
+    batchSize: meta.batchSize,
+    batchIndex: meta.batchIndex,
+    batchId: meta.batchId,
+  }
+  const bytes = migrationPayloadType
+    .encode(migrationPayloadType.fromObject(payload))
+    .finish()
+  return `otpauth-migration://offline?data=${encodeURIComponent(bytesToBase64(bytes))}`
+}
+
+export interface GaExportChunk {
+  uri: string
+  index: number
+  count: number
+}
+
+/**
+ * 将账号列表拆分为多个 GA 兼容迁移二维码(参考 Google Authenticator 导出流程:
+ * 每个二维码携带相同 batchId/batchSize 与各自唯一的 batchIndex,导入方收集齐
+ * 全部分页后按索引合并)。
+ */
+export function buildGaMigrationChunks(
+  accounts: ParsedGaAccount[],
+  pageSize: number = QR_EXPORT_PAGE_SIZE,
+): GaExportChunk[] {
+  if (accounts.length === 0) return []
+  const batchId = randomBatchId()
+  const total = Math.ceil(accounts.length / pageSize)
+  const chunks: GaExportChunk[] = []
+  for (let index = 0; index < total; index++) {
+    const slice = accounts.slice(index * pageSize, (index + 1) * pageSize)
+    chunks.push({
+      uri: buildMigrationUri(slice, {
+        batchSize: total,
+        batchIndex: index,
+        batchId,
+      }),
+      index,
+      count: slice.length,
+    })
+  }
+  return chunks
+}
+
+/**
+ * 汇总待导出账号:分组条目按分组顺序在前,未分组条目在最后。
+ */
+export function toMigrationAccounts(data: TotpData): ParsedGaAccount[] {
+  const accounts: ParsedGaAccount[] = []
+  for (const group of data.groups) {
+    for (const item of group.items) {
+      accounts.push({
+        issuer: item.issuer,
+        label: item.label,
+        secret: item.secret,
+        algorithm: item.algorithm,
+        digits: item.digits,
+        period: item.period,
+      })
+    }
+  }
+  for (const item of data.ungrouped) {
+    accounts.push({
+      issuer: item.issuer,
+      label: item.label,
+      secret: item.secret,
+      algorithm: item.algorithm,
+      digits: item.digits,
+      period: item.period,
+    })
+  }
+  return accounts
+}
+
+/**
+ * 统计超出迁移格式表达能力的账号数(周期非 30 秒,或位数非 6/8)。
+ * 这类账号扫码导入后会回退到格式默认值。
+ */
+export function countFormatLimitedAccounts(accounts: ParsedGaAccount[]): number {
+  return accounts.filter(
+    (account) =>
+      account.period !== 30 || (account.digits !== 6 && account.digits !== 8),
+  ).length
 }

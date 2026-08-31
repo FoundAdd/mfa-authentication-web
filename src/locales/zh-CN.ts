@@ -12,6 +12,8 @@ export default {
     search: '搜索',
     move: '移动',
     back: '返回',
+    selectAll: '全选',
+    unselectAll: '全不选',
     selected: '已选 {count} 项',
     inputs: '{issuer} - {label}',
     exitApp: '退出应用',
@@ -48,6 +50,7 @@ export default {
     reset: '清空并重置',
   },
   group: {
+    all: '全部',
     ungrouped: '未分组',
     addGroup: '添加分组',
     deleteGroup: '删除分组',
@@ -57,6 +60,8 @@ export default {
     renamePlaceholder: '请输入分组名称',
     deleteGroupConfirm: '确定要删除分组“{name}”吗？',
     count: '{count} 项',
+    moveUp: '上移分组',
+    moveDown: '下移分组',
   },
   empty: {
     title: '没有更多密钥了',
@@ -132,6 +137,9 @@ export default {
   export: {
     title: '导出备份',
     noData: '没有可导出的密钥',
+    mode: '导出方式',
+    modeFile: '备份文件 (.totp)',
+    modeQr: '二维码迁移',
     encryptLabel: '使用密码加密导出',
     password: '导出密码',
     passwordPlaceholder: '输入密码(选填)',
@@ -139,6 +147,16 @@ export default {
     confirmPasswordPlaceholder: '再次输入密码',
     passwordMismatch: '两次输入的密码不一致',
     plaintextWarning: '导出文件将包含明文密钥,请妥善保管。',
+    qrPlaintextWarning: '二维码将以明文形式携带密钥,导出时请确保周围环境安全。',
+    qrLimit:
+      '有 {count} 条密钥的周期或位数超出迁移格式支持范围(仅支持 30 秒周期、6/8 位),扫码导入后将按默认值处理。',
+    generateQr: '生成二维码',
+    back: '返回',
+    qrPage: '第 {current} / {total} 页',
+    qrPrev: '上一页',
+    qrNext: '下一页',
+    qrHint:
+      '请使用 Google Authenticator 或本应用的"扫码添加"功能,依次扫描每一页二维码,全部扫描完成后即可完成迁移。',
     download: '导出',
     success: '导出成功',
     shared: '已打开分享面板',

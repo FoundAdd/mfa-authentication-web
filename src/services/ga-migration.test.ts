@@ -7,7 +7,13 @@ import {
   GaMigrationError,
   setPendingMigrationAccounts,
   takePendingMigrationAccounts,
+  buildGaMigrationChunks,
+  toMigrationAccounts,
+  countFormatLimitedAccounts,
+  QR_EXPORT_PAGE_SIZE,
 } from './ga-migration'
+import type { ParsedGaAccount } from './ga-migration'
+import type { TotpData } from '@/types'
 
 const fixture = rawFixture.trim()
 
@@ -179,5 +185,153 @@ describe('pending migration accounts', () => {
     expect(taken).toEqual(accounts)
     // 取后清空
     expect(takePendingMigrationAccounts()).toBeNull()
+  })
+})
+
+// ---- 导出编码 ----
+
+const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+
+function makeAccounts(n: number): ParsedGaAccount[] {
+  return Array.from({ length: n }, (_, i) => ({
+    issuer: `Issuer${i}`,
+    label: `user${i}@example.com`,
+    // 16 字符的规范 Base32(10 字节),避免 padding 导致编码前后形式不一致
+    secret: Array.from(
+      { length: 16 },
+      (_, j) => BASE32_ALPHABET[(i * 7 + j * 3) % 32],
+    ).join(''),
+    algorithm: (['SHA1', 'SHA256', 'SHA512'] as const)[i % 3],
+    digits: i % 2 === 0 ? 6 : 8,
+    period: 30,
+  }))
+}
+
+describe('buildGaMigrationChunks', () => {
+  it('splits accounts into pages of the given size with shared batch metadata', () => {
+    const accounts = makeAccounts(7)
+    const chunks = buildGaMigrationChunks(accounts, 5)
+
+    expect(chunks).toHaveLength(2)
+    expect(chunks.map((c) => c.count)).toEqual([5, 2])
+    expect(chunks.map((c) => c.index)).toEqual([0, 1])
+
+    const c0 = parseGaMigrationChunk(chunks[0].uri)
+    const c1 = parseGaMigrationChunk(chunks[1].uri)
+    expect(c0.batchSize).toBe(2)
+    expect(c1.batchSize).toBe(2)
+    expect(c0.batchIndex).toBe(0)
+    expect(c1.batchIndex).toBe(1)
+    expect(c0.batchId).toBe(c1.batchId)
+    expect(c0.batchId).toBeGreaterThan(0)
+  })
+
+  it('round-trips account fields through the wire format', () => {
+    const accounts = makeAccounts(6)
+    const chunks = buildGaMigrationChunks(accounts, 6)
+    const parsed = parseGaMigrationChunk(chunks[0].uri)
+
+    expect(parsed.accounts).toHaveLength(6)
+    parsed.accounts.forEach((account, i) => {
+      expect(account.issuer).toBe(accounts[i].issuer)
+      expect(account.label).toBe(accounts[i].label)
+      expect(account.secret).toBe(accounts[i].secret)
+      expect(account.algorithm).toBe(accounts[i].algorithm)
+      expect(account.digits).toBe(accounts[i].digits)
+      expect(account.period).toBe(30)
+    })
+  })
+
+  it('produces a single chunk when accounts fit one page', () => {
+    const chunks = buildGaMigrationChunks(makeAccounts(3), 6)
+    expect(chunks).toHaveLength(1)
+    const parsed = parseGaMigrationChunk(chunks[0].uri)
+    expect(parsed.batchSize).toBe(1)
+    expect(parsed.batchIndex).toBe(0)
+    expect(parsed.accounts).toHaveLength(3)
+  })
+
+  it('defaults page size to 6 (within the 5-8 requirement)', () => {
+    expect(QR_EXPORT_PAGE_SIZE).toBeGreaterThanOrEqual(5)
+    expect(QR_EXPORT_PAGE_SIZE).toBeLessThanOrEqual(8)
+
+    const chunks = buildGaMigrationChunks(makeAccounts(20))
+    expect(chunks).toHaveLength(4)
+    expect(chunks.slice(0, 3).map((c) => c.count)).toEqual([6, 6, 6])
+    expect(chunks[3].count).toBe(2)
+  })
+
+  it('round-trips through GaBatchCollector like a real GA import', () => {
+    const accounts = makeAccounts(12)
+    const chunks = buildGaMigrationChunks(accounts, 5)
+
+    const collector = new GaBatchCollector()
+    let result = collector.add(parseGaMigrationChunk(chunks[0].uri))
+    for (let i = 1; i < chunks.length; i++) {
+      result = collector.add(parseGaMigrationChunk(chunks[i].uri))
+    }
+
+    expect(result.complete).toBe(true)
+    expect(result.accounts).toHaveLength(12)
+    expect(result.accounts!.map((a) => a.issuer)).toEqual(
+      accounts.map((a) => a.issuer),
+    )
+  })
+
+  it('returns no chunks for an empty account list', () => {
+    expect(buildGaMigrationChunks([])).toEqual([])
+  })
+})
+
+describe('toMigrationAccounts', () => {
+  it('flattens groups first then ungrouped', () => {
+    const data: TotpData = {
+      groups: [
+        {
+          id: 'g1',
+          name: '工作',
+          isExpanded: true,
+          items: [
+            {
+              id: 'i1',
+              issuer: 'GitHub',
+              label: 'a',
+              secret: 'JBSWY3DPEHPK3PXP',
+              algorithm: 'SHA1',
+              digits: 6,
+              period: 30,
+            },
+          ],
+        },
+      ],
+      ungrouped: [
+        {
+          id: 'i2',
+          issuer: 'Apple',
+          label: 'b',
+          secret: 'KRSXG5CTMVRXEZLU',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+        },
+      ],
+    }
+
+    const accounts = toMigrationAccounts(data)
+    expect(accounts.map((a) => a.issuer)).toEqual(['GitHub', 'Apple'])
+    // 分组结构不进入迁移格式(标准协议不携带)
+    expect(accounts.every((a) => a.period === 30)).toBe(true)
+  })
+})
+
+describe('countFormatLimitedAccounts', () => {
+  it('counts accounts with non-30s period or non-6/8 digits', () => {
+    const accounts: ParsedGaAccount[] = [
+      { issuer: 'A', label: 'a', secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 6, period: 30 },
+      { issuer: 'B', label: 'b', secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 8, period: 30 },
+      { issuer: 'C', label: 'c', secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 6, period: 60 },
+      { issuer: 'D', label: 'd', secret: 'JBSWY3DPEHPK3PXP', algorithm: 'SHA1', digits: 7, period: 30 },
+    ]
+    expect(countFormatLimitedAccounts(accounts)).toBe(2)
   })
 })
