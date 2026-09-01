@@ -132,7 +132,21 @@ jobs:
           cache: gradle
       - run: npm install
       - run: npm run build
+        env:
+          # 注入 Release 仓库地址,App 端更新检测以此为 API 基准
+          VITE_RELEASE_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
       - run: npx cap sync android
+      - name: Derive app version from release tag
+        run: |
+          # APP_VERSION_NAME/APP_VERSION_CODE 注入 build.gradle,使安装后的
+          # versionName 与 Release tag 一致(更新检测按 versionName 对比)
+          ver="${TAG#v}"
+          if [[ "$ver" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            echo "APP_VERSION_NAME=$ver" >> "$GITHUB_ENV"
+            echo "APP_VERSION_CODE=$(( ${BASH_REMATCH[1]} * 10000 + ${BASH_REMATCH[2]} * 100 + ${BASH_REMATCH[3]} ))" >> "$GITHUB_ENV"
+          else
+            echo "Tag ${TAG} is not vX.Y.Z; keep default app version"
+          fi
       - name: Set up Android SDK
         env:
           ANDROID_SDK_TOOLS_URL: https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip

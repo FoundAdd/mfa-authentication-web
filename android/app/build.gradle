@@ -22,8 +22,11 @@ android {
         applicationId "cn.hy.mfaauthenticator"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // CI 从 Release tag 注入 APP_VERSION_NAME/APP_VERSION_CODE(见
+        // release.yml),保证安装后的 versionName 与 Release 版本一致,
+        // App 内更新检测按 versionName 对比;本地构建回退默认值
+        versionCode (System.getenv('APP_VERSION_CODE') as Integer ?: 1)
+        versionName System.getenv('APP_VERSION_NAME') ?: "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
