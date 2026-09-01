@@ -6,6 +6,8 @@ import localforage from 'localforage'
 
 export const useSettingStore = defineStore('settings', () => {
   const locale = ref<LocalePreference>('follow-system')
+  // App 内更新检测开关:关闭后不再发起任何版本检查请求
+  const updateCheckEnabled = ref(true)
 
   async function init() {
     const saved = await localforage.getItem<string>('locale')
@@ -13,6 +15,10 @@ export const useSettingStore = defineStore('settings', () => {
       if (saved === 'follow-system' || (SUPPORTED_LOCALES as readonly string[]).includes(saved)) {
         locale.value = saved as LocalePreference
       }
+    }
+    const savedUpdateCheck = await localforage.getItem<boolean>('updateCheckEnabled')
+    if (typeof savedUpdateCheck === 'boolean') {
+      updateCheckEnabled.value = savedUpdateCheck
     }
     applyLocale()
   }
@@ -31,13 +37,20 @@ export const useSettingStore = defineStore('settings', () => {
     applyLocale()
   }
 
+  async function setUpdateCheckEnabled(enabled: boolean) {
+    updateCheckEnabled.value = enabled
+    await localforage.setItem('updateCheckEnabled', enabled)
+  }
+
   watch(locale, () => {
     applyLocale()
   })
 
   return {
     locale,
+    updateCheckEnabled,
     init,
     setLocalePreference,
+    setUpdateCheckEnabled,
   }
 })
