@@ -310,6 +310,39 @@ describe('HomeView 分组卡片列表', () => {
     expect(rowIssuers(w)).toEqual(['GitHub', 'Apple'])
   })
 
+  it('搜索时已折叠的分组与未分组卡片自动展开并仅显示命中条目', async () => {
+    const store = useTotpStore()
+    const gA = store.addGroup('工作')
+    store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
+    store.addItem(gA.id, item('GitLab', 'b', 'KRSXG5CTMVRXEZLU'))
+    store.addItem(null, item('AWS', 'prod@example.com', 'MFRGGZDFMZTWQ2LK'))
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    // 折叠全部卡片:工作、未分组
+    const headers = w.findAll('.group-card .group-header')
+    expect(headers).toHaveLength(2)
+    await headers[0].trigger('click')
+    await nextTick()
+    await w.findAll('.group-card .group-header')[1].trigger('click')
+    await nextTick()
+    expect(rowWrappers(w)).toHaveLength(0)
+
+    // 搜索命中折叠分组内的条目 → 分组自动展开,仅显示命中项
+    store.searchQuery = 'hub'
+    await nextTick()
+    expect(cardNames(w)).toEqual(['工作'])
+    expect(rowIssuers(w)).toEqual(['GitHub'])
+
+    // 搜索命中折叠未分组卡片内的条目 → 未分组自动展开
+    store.searchQuery = 'prod'
+    await nextTick()
+    expect(cardNames(w)).toEqual(['未分组'])
+    expect(rowIssuers(w)).toEqual(['AWS'])
+  })
+
   it('搜索跨分组匹配 issuer:命中分组自动展开,未分组命中排在最后', async () => {
     const store = useTotpStore()
     const gA = store.addGroup('工作')

@@ -139,7 +139,7 @@
           :name="t('group.ungrouped')"
           :items="totpStore.data.ungrouped"
           :display-items="visibleUngrouped"
-          :expanded="ungroupedExpanded"
+          :expanded="searchActive || ungroupedExpanded"
           :show-menu="false"
           :batch-mode="batchMode"
           :search-active="searchActive"

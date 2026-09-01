@@ -9,7 +9,7 @@
       </el-icon>
       <span class="group-name">{{ name }}</span>
       <span class="group-count">
-        {{ t('group.count', { count: items.length }) }}
+        {{ t('group.count', { count: displayItems.length }) }}
       </span>
       <el-dropdown
         v-if="showMenu"
