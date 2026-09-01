@@ -68,71 +68,88 @@
             :label="g.name"
           />
         </el-select>
-        <el-dropdown
-          v-if="activeGroup"
-          trigger="click"
-          @command="onGroupMenu"
-        >
-          <span class="filter-more">
-            <el-icon><MoreFilled /></el-icon>
-          </span>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="rename">
-                {{ t('group.rename') }}
-              </el-dropdown-item>
-              <el-dropdown-item command="up" :disabled="!canMoveUp">
-                {{ t('group.moveUp') }}
-              </el-dropdown-item>
-              <el-dropdown-item command="down" :disabled="!canMoveDown">
-                {{ t('group.moveDown') }}
-              </el-dropdown-item>
-              <el-dropdown-item command="delete" divided>
-                {{ t('group.deleteGroup') }}
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
       </div>
 
       <div class="list">
+        <!-- 分组卡片在前:仅"全部"视图支持按头部把手整卡拖拽排序 -->
         <draggable
-          v-if="dragEnabled"
-          v-model="filteredItems"
-          :disabled="batchMode"
-          handle=".drag-handle"
+          v-if="canReorderGroups"
+          v-model="groupList"
+          handle=".group-grip"
           :animation="200"
           item-key="id"
-          :move="onDragMove"
+          class="group-sort"
+          @end="persistGroupOrder"
         >
           <template #item="{ element }">
-            <ItemRow
-              :item="element"
-              :group-tag="itemGroupTag(element)"
+            <GroupCard
+              :name="element.name"
+              :items="element.items"
+              :display-items="groupDisplayItems(element)"
+              :expanded="searchActive || element.isExpanded"
+              :show-menu="true"
+              :can-reorder="true"
+              :can-move-up="canMoveGroupUp(element.id)"
+              :can-move-down="canMoveGroupDown(element.id)"
               :batch-mode="batchMode"
-              :selected="selected.has(element.id)"
-              @toggle="onItemToggle(element)"
-              @longpress="onItemLongPress(element)"
-              @menu="(action) => onItemMenuAction(element, itemGroupId(element), action)"
+              :search-active="searchActive"
+              :selected-ids="selected"
+              @toggle="toggleGroup(element)"
+              @rename="renameGroup(element)"
+              @delete="openGroupDelete(element)"
+              @up="totpStore.moveGroup(element.id, -1)"
+              @down="totpStore.moveGroup(element.id, 1)"
+              @item-toggle="onItemToggle"
+              @item-long-press="onItemLongPress"
+              @item-menu="(item, action) => onItemMenuAction(item, element.id, action)"
+              @item-drag-end="onGroupItemsDragEnd(element)"
             />
           </template>
         </draggable>
         <template v-else>
-          <ItemRow
-            v-for="row in visibleRows"
-            :key="row.item.id"
-            :item="row.item"
-            :group-tag="row.groupName"
+          <GroupCard
+            v-for="group in visibleGroups"
+            :key="group.id"
+            :name="group.name"
+            :items="group.items"
+            :display-items="groupDisplayItems(group)"
+            :expanded="searchActive || group.isExpanded"
+            :show-menu="true"
+            :can-reorder="false"
+            :can-move-up="canMoveGroupUp(group.id)"
+            :can-move-down="canMoveGroupDown(group.id)"
             :batch-mode="batchMode"
-            :selected="selected.has(row.item.id)"
-            @toggle="onItemToggle(row.item)"
-            @longpress="onItemLongPress(row.item)"
-            @menu="(action) => onItemMenuAction(row.item, row.groupId, action)"
+            :search-active="searchActive"
+            :selected-ids="selected"
+            @toggle="toggleGroup(group)"
+            @rename="renameGroup(group)"
+            @delete="openGroupDelete(group)"
+            @up="totpStore.moveGroup(group.id, -1)"
+            @down="totpStore.moveGroup(group.id, 1)"
+            @item-toggle="onItemToggle"
+            @item-long-press="onItemLongPress"
+            @item-menu="(item, action) => onItemMenuAction(item, group.id, action)"
+            @item-drag-end="onGroupItemsDragEnd(group)"
           />
         </template>
-        <p v-if="!searchActive && visibleRows.length === 0" class="empty-hint">
-          {{ t('totp.emptyGroup') }}
-        </p>
+
+        <!-- 未分组卡片固定在所有分组之后 -->
+        <GroupCard
+          v-if="showUngroupedCard"
+          :name="t('group.ungrouped')"
+          :items="totpStore.data.ungrouped"
+          :display-items="visibleUngrouped"
+          :expanded="searchActive || ungroupedExpanded"
+          :show-menu="false"
+          :batch-mode="batchMode"
+          :search-active="searchActive"
+          :selected-ids="selected"
+          @toggle="ungroupedExpanded = !ungroupedExpanded"
+          @item-toggle="onItemToggle"
+          @item-long-press="onItemLongPress"
+          @item-menu="(item, action) => onItemMenuAction(item, null, action)"
+          @item-drag-end="onUngroupedDragEnd"
+        />
       </div>
     </template>
 
@@ -213,14 +230,13 @@ import draggable from 'vuedraggable'
 import {
   Camera,
   FolderAdd,
-  MoreFilled,
   Plus,
   Search,
   Setting,
 } from '@element-plus/icons-vue'
 import { useTotpStore, type ItemRef } from '@/stores/totp'
 import type { TotpGroup, TotpItem } from '@/types'
-import ItemRow from '@/components/ItemRow.vue'
+import GroupCard from '@/components/GroupCard.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import BatchBar from '@/components/BatchBar.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
@@ -239,6 +255,8 @@ const settingsVisible = ref(false)
 // 列表分组筛选(下拉复选):'__all__'(全部,与其他选项互斥) /
 // '__ungrouped__'(未分组) / 分组 id,可同时勾选多个
 const activeFilters = ref<string[]>([ALL_FILTER])
+// 未分组卡片无持久化的 isExpanded 字段,折叠状态仅页面内记忆
+const ungroupedExpanded = ref(true)
 
 const moveVisible = ref(false)
 const groupDeleteVisible = ref(false)
@@ -268,26 +286,6 @@ function itemMatches(item: TotpItem): boolean {
   )
 }
 
-interface RowEntry {
-  item: TotpItem
-  groupId: string | null
-  groupName: string
-}
-
-// 扁平行列表:分组条目按分组顺序在前,未分组条目固定排在最后
-const allRows = computed<RowEntry[]>(() => {
-  const rows: RowEntry[] = []
-  for (const group of totpStore.data.groups) {
-    for (const item of group.items) {
-      rows.push({ item, groupId: group.id, groupName: group.name })
-    }
-  }
-  for (const item of totpStore.data.ungrouped) {
-    rows.push({ item, groupId: null, groupName: t('group.ungrouped') })
-  }
-  return rows
-})
-
 /**
  * 归一化多选结果:
  *  - 清空 → 回退到"全部";
@@ -310,116 +308,68 @@ function onFiltersUpdate(value: unknown) {
   activeFilters.value = normalizeFilters(next, activeFilters.value)
 }
 
-const visibleRows = computed<RowEntry[]>(() => {
+// 可见的分组卡片:搜索时仅保留组名命中或含命中条目的分组;
+// 筛选时展示所选分组并集;顺序始终沿用分组的存储顺序
+const visibleGroups = computed<TotpGroup[]>(() => {
   const q = searchQuery.value
   if (q) {
-    // 搜索跨分组进行,分组名命中时展示该分组全部条目
-    return allRows.value.filter(
-      (row) =>
-        itemMatches(row.item) ||
-        (row.groupId !== null && row.groupName.toLowerCase().includes(q)),
+    return totpStore.data.groups.filter(
+      (g) =>
+        g.name.toLowerCase().includes(q) || g.items.some(itemMatches),
     )
   }
-  if (activeFilters.value.includes(ALL_FILTER)) return allRows.value
+  if (activeFilters.value.includes(ALL_FILTER)) return totpStore.data.groups
   const picked = new Set(activeFilters.value)
-  return allRows.value.filter((row) =>
-    row.groupId === null
-      ? picked.has(UNGROUPED_FILTER)
-      : picked.has(row.groupId),
-  )
+  return totpStore.data.groups.filter((g) => picked.has(g.id))
 })
 
-// 恰好只选了一个分组/未分组(单一容器)时隐藏冗余的分组标注;
-// 分组管理菜单同样仅在此视图下可用
-const singleContainer = computed(
-  () =>
-    !searchActive.value &&
-    activeFilters.value.length === 1 &&
-    activeFilters.value[0] !== ALL_FILTER,
-)
+// 卡片体内实际渲染的条目:搜索时组名命中展示整组,否则仅展示命中条目
+function groupDisplayItems(group: TotpGroup): TotpItem[] {
+  const q = searchQuery.value
+  if (!q || group.name.toLowerCase().includes(q)) return group.items
+  return group.items.filter(itemMatches)
+}
 
-// 非搜索视图统一用可拖拽列表渲染(全部/复选并集/单一容器),
-// 搜索结果跨分组展示命中项,不支持排序
-const dragEnabled = computed(() => !searchActive.value)
-
-// 条目 id → 所属分组 id(未分组为 null):为拖拽落点守卫与
-// 行内菜单提供该条目的分组上下文
-const containerIdByItemId = computed<Map<string, string | null>>(() => {
-  const map = new Map<string, string | null>()
-  for (const group of totpStore.data.groups) {
-    for (const item of group.items) map.set(item.id, group.id)
+const visibleUngrouped = computed<TotpItem[]>(() => {
+  const q = searchQuery.value
+  if (q) return totpStore.data.ungrouped.filter(itemMatches)
+  if (activeFilters.value.includes(ALL_FILTER)) {
+    return totpStore.data.ungrouped
   }
-  for (const item of totpStore.data.ungrouped) map.set(item.id, null)
-  return map
+  return activeFilters.value.includes(UNGROUPED_FILTER)
+    ? totpStore.data.ungrouped
+    : []
 })
 
-function itemGroupId(item: TotpItem): string | null {
-  return containerIdByItemId.value.get(item.id) ?? null
-}
-
-function itemGroupTag(item: TotpItem): string | undefined {
-  if (singleContainer.value) return undefined
-  const groupId = containerIdByItemId.value.get(item.id)
-  if (groupId === null) return t('group.ungrouped')
-  return totpStore.data.groups.find((g) => g.id === groupId)?.name
-}
-
-// 平铺列表(分组条目在前、未分组最后)的拖拽结果映射回各容器:
-// 每个容器按旧数组顺序保留被筛选隐藏的条目,可见槽位依新顺序回填,
-// 使同容器重排在任意筛选视图下都精确生效
-const filteredItems = computed<TotpItem[]>({
-  get: () => visibleRows.value.map((row) => row.item),
-  set: (items) => {
-    if (!dragEnabled.value) return
-    const ownerOf = containerIdByItemId.value
-    const visibleIds = new Set(items.map((i) => i.id))
-    const remap = (oldArr: TotpItem[], groupId: string | null) => {
-      const newOrder = items.filter((i) => ownerOf.get(i.id) === groupId)
-      let k = 0
-      return oldArr.map((it) => (visibleIds.has(it.id) ? newOrder[k++] : it))
-    }
-    for (const group of totpStore.data.groups) {
-      group.items = remap(group.items, group.id)
-    }
-    totpStore.data.ungrouped = remap(totpStore.data.ungrouped, null)
-  },
+const showUngroupedCard = computed(() => {
+  if (visibleUngrouped.value.length > 0) return true
+  // 明确筛选"未分组"时保留空卡片,给出占位提示
+  return !searchActive.value && activeFilters.value.includes(UNGROUPED_FILTER)
 })
 
-// 拖拽仅限同一容器内重排:跨分组块的插入直接拒绝(Sortable 原地回弹),
-// 分组间移动仍通过"移动到分组"菜单完成
-interface DragMoveContext {
-  draggedContext?: { element?: TotpItem }
-  relatedContext?: { element?: TotpItem }
-}
-
-function onDragMove(evt: DragMoveContext): boolean {
-  const dragged = evt.draggedContext?.element
-  const related = evt.relatedContext?.element
-  if (!dragged || !related) return true
-  return (
-    containerIdByItemId.value.get(dragged.id) ===
-    containerIdByItemId.value.get(related.id)
-  )
-}
-
-const activeGroup = computed<TotpGroup | null>(() => {
-  if (activeFilters.value.length !== 1) return null
-  const id = activeFilters.value[0]
-  if (id === ALL_FILTER || id === UNGROUPED_FILTER) return null
-  return (
-    totpStore.data.groups.find((g) => g.id === id) ?? null
-  )
+// 扁平行集合(分组在前、未分组最后),供多选区间/全选按可见顺序计算
+const visibleRows = computed<TotpItem[]>(() => {
+  const rows: TotpItem[] = []
+  for (const group of visibleGroups.value) {
+    rows.push(...groupDisplayItems(group))
+  }
+  rows.push(...visibleUngrouped.value)
+  return rows
 })
 
-const groupIndex = computed(() =>
-  totpStore.data.groups.findIndex((g) => g.id === activeGroup.value?.id),
-)
-const canMoveUp = computed(() => groupIndex.value > 0)
-const canMoveDown = computed(
+// 仅"全部"视图(所有分组可见)允许整卡拖拽排序,
+// 部分筛选下拖拽会破坏分组间的全局顺序
+const canReorderGroups = computed(
   () =>
-    groupIndex.value !== -1 &&
-    groupIndex.value < totpStore.data.groups.length - 1,
+    !batchMode.value &&
+    !searchActive.value &&
+    activeFilters.value.includes(ALL_FILTER),
 )
+
+const groupList = computed<TotpGroup[]>({
+  get: () => totpStore.data.groups,
+  set: (groups) => totpStore.reorderGroups(groups.map((g) => g.id)),
+})
 
 // 当前筛选的分组被删除(或被导入覆盖)时剔除失效选项,避免停留在失效筛选上
 watch(
@@ -434,14 +384,22 @@ watch(
   },
 )
 
-// ---- group menu ----
-function onGroupMenu(command: string) {
-  const group = activeGroup.value
-  if (!group) return
-  if (command === 'rename') void renameGroup(group)
-  else if (command === 'delete') openGroupDelete(group)
-  else if (command === 'up') totpStore.moveGroup(group.id, -1)
-  else if (command === 'down') totpStore.moveGroup(group.id, 1)
+function toggleGroup(group: TotpGroup) {
+  if (searchActive.value || batchMode.value) return
+  group.isExpanded = !group.isExpanded
+}
+
+function groupIndex(id: string): number {
+  return totpStore.data.groups.findIndex((g) => g.id === id)
+}
+
+function canMoveGroupUp(id: string): boolean {
+  return groupIndex(id) > 0
+}
+
+function canMoveGroupDown(id: string): boolean {
+  const idx = groupIndex(id)
+  return idx !== -1 && idx < totpStore.data.groups.length - 1
 }
 
 // ---- batch ----
@@ -469,7 +427,7 @@ function onItemLongPress(item: TotpItem) {
     return
   }
   // 已在多选模式:从锚点行到长按行做区间选择(按当前视图内的显示顺序)
-  const ids = visibleRows.value.map((row) => row.item.id)
+  const ids = visibleRows.value.map((row) => row.id)
   const from = ids.indexOf(anchorId.value ?? '')
   const to = ids.indexOf(item.id)
   if (from === -1 || to === -1) {
@@ -495,15 +453,15 @@ function onItemToggle(item: TotpItem) {
 const allVisibleSelected = computed(
   () =>
     visibleRows.value.length > 0 &&
-    visibleRows.value.every((row) => selected.value.has(row.item.id)),
+    visibleRows.value.every((row) => selected.value.has(row.id)),
 )
 
 function toggleSelectAll() {
   if (allVisibleSelected.value) {
-    for (const row of visibleRows.value) selected.value.delete(row.item.id)
+    for (const row of visibleRows.value) selected.value.delete(row.id)
     if (selected.value.size === 0) batchMode.value = false
   } else {
-    for (const row of visibleRows.value) selected.value.add(row.item.id)
+    for (const row of visibleRows.value) selected.value.add(row.id)
   }
 }
 
@@ -623,6 +581,19 @@ async function confirmBatchDelete() {
   }
 }
 
+// ---- drag end ----
+function onGroupItemsDragEnd(group: TotpGroup) {
+  totpStore.reorderItems(group.id, group.items.map((i) => i.id))
+}
+
+function onUngroupedDragEnd() {
+  totpStore.reorderItems(null, totpStore.data.ungrouped.map((i) => i.id))
+}
+
+function persistGroupOrder() {
+  totpStore.reorderGroups(totpStore.data.groups.map((g) => g.id))
+}
+
 // ---- add / rename group ----
 async function promptAddGroup() {
   try {
@@ -733,23 +704,13 @@ onMounted(async () => {
   width: min(240px, 62vw);
 }
 
-.filter-more {
-  display: flex;
-  align-items: center;
-  color: #909399;
-  cursor: pointer;
-  padding: 6px;
-}
-
 .list {
-  padding: 0;
+  padding: 4px 0;
 }
 
-.empty-hint {
-  text-align: center;
-  color: #909399;
-  padding: 48px 16px;
-  font-size: 14px;
+.group-sort {
+  display: flex;
+  flex-direction: column;
 }
 
 .empty-state p {
