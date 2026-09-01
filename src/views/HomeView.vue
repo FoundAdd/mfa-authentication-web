@@ -97,21 +97,23 @@
 
       <div class="list">
         <draggable
-          v-if="singleContainer"
+          v-if="dragEnabled"
           v-model="filteredItems"
           :disabled="batchMode"
           handle=".drag-handle"
           :animation="200"
           item-key="id"
+          :move="onDragMove"
         >
           <template #item="{ element }">
             <ItemRow
               :item="element"
+              :group-tag="itemGroupTag(element)"
               :batch-mode="batchMode"
               :selected="selected.has(element.id)"
               @toggle="onItemToggle(element)"
               @longpress="onItemLongPress(element)"
-              @menu="(action) => onItemMenuAction(element, currentGroupId, action)"
+              @menu="(action) => onItemMenuAction(element, itemGroupId(element), action)"
             />
           </template>
         </draggable>
@@ -327,7 +329,8 @@ const visibleRows = computed<RowEntry[]>(() => {
   )
 })
 
-// 仅单一容器(恰好只选了一个分组/未分组)时隐藏分组标注并启用拖拽排序
+// 恰好只选了一个分组/未分组(单一容器)时隐藏冗余的分组标注;
+// 分组管理菜单同样仅在此视图下可用
 const singleContainer = computed(
   () =>
     !searchActive.value &&
@@ -335,19 +338,69 @@ const singleContainer = computed(
     activeFilters.value[0] !== ALL_FILTER,
 )
 
+// 非搜索视图统一用可拖拽列表渲染(全部/复选并集/单一容器),
+// 搜索结果跨分组展示命中项,不支持排序
+const dragEnabled = computed(() => !searchActive.value)
+
+// 条目 id → 所属分组 id(未分组为 null):为拖拽落点守卫与
+// 行内菜单提供该条目的分组上下文
+const containerIdByItemId = computed<Map<string, string | null>>(() => {
+  const map = new Map<string, string | null>()
+  for (const group of totpStore.data.groups) {
+    for (const item of group.items) map.set(item.id, group.id)
+  }
+  for (const item of totpStore.data.ungrouped) map.set(item.id, null)
+  return map
+})
+
+function itemGroupId(item: TotpItem): string | null {
+  return containerIdByItemId.value.get(item.id) ?? null
+}
+
+function itemGroupTag(item: TotpItem): string | undefined {
+  if (singleContainer.value) return undefined
+  const groupId = containerIdByItemId.value.get(item.id)
+  if (groupId === null) return t('group.ungrouped')
+  return totpStore.data.groups.find((g) => g.id === groupId)?.name
+}
+
+// 平铺列表(分组条目在前、未分组最后)的拖拽结果映射回各容器:
+// 每个容器按旧数组顺序保留被筛选隐藏的条目,可见槽位依新顺序回填,
+// 使同容器重排在任意筛选视图下都精确生效
 const filteredItems = computed<TotpItem[]>({
   get: () => visibleRows.value.map((row) => row.item),
   set: (items) => {
-    if (!singleContainer.value) return
-    const filter = activeFilters.value[0]
-    if (filter === UNGROUPED_FILTER) {
-      totpStore.data.ungrouped = items
-    } else {
-      const group = totpStore.data.groups.find((g) => g.id === filter)
-      if (group) group.items = items
+    if (!dragEnabled.value) return
+    const ownerOf = containerIdByItemId.value
+    const visibleIds = new Set(items.map((i) => i.id))
+    const remap = (oldArr: TotpItem[], groupId: string | null) => {
+      const newOrder = items.filter((i) => ownerOf.get(i.id) === groupId)
+      let k = 0
+      return oldArr.map((it) => (visibleIds.has(it.id) ? newOrder[k++] : it))
     }
+    for (const group of totpStore.data.groups) {
+      group.items = remap(group.items, group.id)
+    }
+    totpStore.data.ungrouped = remap(totpStore.data.ungrouped, null)
   },
 })
+
+// 拖拽仅限同一容器内重排:跨分组块的插入直接拒绝(Sortable 原地回弹),
+// 分组间移动仍通过"移动到分组"菜单完成
+interface DragMoveContext {
+  draggedContext?: { element?: TotpItem }
+  relatedContext?: { element?: TotpItem }
+}
+
+function onDragMove(evt: DragMoveContext): boolean {
+  const dragged = evt.draggedContext?.element
+  const related = evt.relatedContext?.element
+  if (!dragged || !related) return true
+  return (
+    containerIdByItemId.value.get(dragged.id) ===
+    containerIdByItemId.value.get(related.id)
+  )
+}
 
 const activeGroup = computed<TotpGroup | null>(() => {
   if (activeFilters.value.length !== 1) return null
@@ -357,10 +410,6 @@ const activeGroup = computed<TotpGroup | null>(() => {
     totpStore.data.groups.find((g) => g.id === id) ?? null
   )
 })
-
-const currentGroupId = computed(() =>
-  activeGroup.value ? activeGroup.value.id : null,
-)
 
 const groupIndex = computed(() =>
   totpStore.data.groups.findIndex((g) => g.id === activeGroup.value?.id),

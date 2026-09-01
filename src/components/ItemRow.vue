@@ -167,6 +167,9 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
   cursor: grab;
   display: flex;
   align-items: center;
+  /* 把手仅用于拖拽:阻止触屏把该手势判定为页面滚动(会派发
+     pointercancel 中断拖拽),列表滚动从行体其余区域进行 */
+  touch-action: none;
 }
 
 .select-badge {
