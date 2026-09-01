@@ -60,8 +60,9 @@ function rowIssuers(w: VueWrapper): string[] {
   return rowWrappers(w).map((row) => row.props('item').issuer)
 }
 
-function rowTags(w: VueWrapper): (string | undefined)[] {
-  return rowWrappers(w).map((row) => row.props('groupTag'))
+/** 按显示顺序返回各卡片头部的标题(分组在前、未分组最后) */
+function cardNames(w: VueWrapper): string[] {
+  return w.findAll('.group-card .group-name').map((el) => el.text())
 }
 
 function selectFilters(w: VueWrapper, value: string[]) {
@@ -119,12 +120,12 @@ describe('HomeView 多选模式', () => {
     const w = await mountHome()
     await nextTick()
 
-    const rows = rowWrappers(w)
-    rows[0].vm.$emit('longpress')
+    rowWrappers(w)[0].vm.$emit('longpress')
     await nextTick()
     expect(batchCount(w)).toBe(1)
 
-    rows[3].vm.$emit('longpress')
+    // 进入多选触发重渲染,列表由 draggable 渲染、实例会重建,需重新查询
+    rowWrappers(w)[3].vm.$emit('longpress')
     await nextTick()
     expect(batchCount(w)).toBe(4)
   })
@@ -137,10 +138,9 @@ describe('HomeView 多选模式', () => {
     const w = await mountHome()
     await nextTick()
 
-    const rows = rowWrappers(w)
-    rows[4].vm.$emit('longpress')
+    rowWrappers(w)[4].vm.$emit('longpress')
     await nextTick()
-    rows[2].vm.$emit('longpress')
+    rowWrappers(w)[2].vm.$emit('longpress')
     await nextTick()
     expect(batchCount(w)).toBe(3)
   })
@@ -220,23 +220,23 @@ describe('HomeView 多选模式', () => {
     const w = await mountHome()
     await nextTick()
 
-    const rows = rowWrappers(w)
-    rows[0].vm.$emit('longpress')
+    rowWrappers(w)[0].vm.$emit('longpress')
     await nextTick()
 
-    rows[1].vm.$emit('toggle')
+    // 重渲染后实例重建,重新查询后再点选
+    rowWrappers(w)[1].vm.$emit('toggle')
     await nextTick()
     expect(batchCount(w)).toBe(2)
 
     // 锚点已更新为 B,长按 E 时应选中 B..E 而非 A..E
-    rows[4].vm.$emit('longpress')
+    rowWrappers(w)[4].vm.$emit('longpress')
     await nextTick()
     expect(batchCount(w)).toBe(5)
   })
 })
 
-describe('HomeView 分组列表', () => {
-  it('默认展示全部:分组条目按分组顺序在前,未分组固定最后,且带分组名标注', async () => {
+describe('HomeView 分组卡片列表', () => {
+  it('默认展示全部:分组卡片在前、未分组卡片固定最后,行内不再有分组标注', async () => {
     const store = useTotpStore()
     const gA = store.addGroup('工作')
     store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
@@ -248,11 +248,13 @@ describe('HomeView 分组列表', () => {
     const w = await mountHome()
     await nextTick()
 
+    expect(cardNames(w)).toEqual(['工作', '个人', '未分组'])
     expect(rowIssuers(w)).toEqual(['GitHub', 'Google', 'Apple'])
-    expect(rowTags(w)).toEqual(['工作', '个人', '未分组'])
+    // 密钥名称独占标题行,行内不再渲染分组名标签
+    expect(w.find('.issuer .group-tag').exists()).toBe(false)
   })
 
-  it('选择指定分组后仅展示该分组条目,不再重复展示分组标注', async () => {
+  it('选择指定分组后仅展示该分组卡片', async () => {
     const store = useTotpStore()
     const gA = store.addGroup('工作')
     store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
@@ -265,11 +267,11 @@ describe('HomeView 分组列表', () => {
     selectFilter(w, gA.id)
     await nextTick()
 
+    expect(cardNames(w)).toEqual(['工作'])
     expect(rowIssuers(w)).toEqual(['GitHub'])
-    expect(rowTags(w)).toEqual([undefined])
   })
 
-  it('选择未分组后仅展示未分组条目', async () => {
+  it('选择未分组后仅展示未分组卡片', async () => {
     const store = useTotpStore()
     const gA = store.addGroup('工作')
     store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
@@ -282,25 +284,50 @@ describe('HomeView 分组列表', () => {
     selectFilter(w, '__ungrouped__')
     await nextTick()
 
+    expect(cardNames(w)).toEqual(['未分组'])
     expect(rowIssuers(w)).toEqual(['Apple'])
   })
 
-  it('搜索跨分组匹配 issuer,保留分组名标注', async () => {
+  it('点击卡片头可折叠分组,再次点击展开', async () => {
     const store = useTotpStore()
     const gA = store.addGroup('工作')
     store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
-    store.addItem(gA.id, item('Google', 'b', 'KRSXG5CTMVRXEZLU'))
     store.addItem(null, item('Apple', 'c', 'MFRGGZDFMZTWQ2LK'))
     await store.saveNow()
 
     const w = await mountHome()
     await nextTick()
 
-    store.searchQuery = 'git'
+    await w.findAll('.group-card .group-header')[0].trigger('click')
+    await nextTick()
+    expect(store.data.groups[0].isExpanded).toBe(false)
+    // 工作组折叠后仅剩未分组卡片中的 Apple
+    expect(rowIssuers(w)).toEqual(['Apple'])
+
+    await w.findAll('.group-card .group-header')[0].trigger('click')
+    await nextTick()
+    expect(store.data.groups[0].isExpanded).toBe(true)
+    expect(rowIssuers(w)).toEqual(['GitHub', 'Apple'])
+  })
+
+  it('搜索跨分组匹配 issuer:命中分组自动展开,未分组命中排在最后', async () => {
+    const store = useTotpStore()
+    const gA = store.addGroup('工作')
+    store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
+    const gB = store.addGroup('个人')
+    store.addItem(gB.id, item('Google', 'b', 'KRSXG5CTMVRXEZLU'))
+    store.addItem(null, item('Apple', 'c', 'MFRGGZDFMZTWQ2LK'))
+    await store.saveNow()
+
+    const w = await mountHome()
     await nextTick()
 
-    expect(rowIssuers(w)).toEqual(['GitHub'])
-    expect(rowTags(w)).toEqual(['工作'])
+    // 'e' 同时命中 Google(个人) 与 Apple(未分组)
+    store.searchQuery = 'e'
+    await nextTick()
+
+    expect(cardNames(w)).toEqual(['个人', '未分组'])
+    expect(rowIssuers(w)).toEqual(['Google', 'Apple'])
   })
 
   it('搜索命中分组名时展示该分组全部条目', async () => {
@@ -316,11 +343,11 @@ describe('HomeView 分组列表', () => {
     store.searchQuery = '工作'
     await nextTick()
 
+    expect(cardNames(w)).toEqual(['工作'])
     expect(rowIssuers(w)).toEqual(['GitHub'])
-    expect(rowTags(w)).toEqual(['工作'])
   })
 
-  it('空分组展示占位提示', async () => {
+  it('空分组卡片展示占位提示', async () => {
     const store = useTotpStore()
     store.addGroup('空分组')
     store.addItem(null, item('Apple', 'c', 'MFRGGZDFMZTWQ2LK'))
@@ -329,14 +356,11 @@ describe('HomeView 分组列表', () => {
     const w = await mountHome()
     await nextTick()
 
-    selectFilter(w, store.data.groups[0].id)
-    await nextTick()
-
-    expect(rowWrappers(w)).toHaveLength(0)
-    expect(w.find('.empty-hint').text()).toBe('该分组暂无条目')
+    expect(cardNames(w)).toEqual(['空分组', '未分组'])
+    expect(w.find('.group-card .group-empty').text()).toBe('该分组暂无条目')
   })
 
-  it('复选多个分组时展示所选分组条目并集,并保留分组名标注', async () => {
+  it('复选多个分组时展示所选分组卡片并集,顺序仍为分组在前、未分组最后', async () => {
     const store = useTotpStore()
     const gA = store.addGroup('工作')
     store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
@@ -351,15 +375,15 @@ describe('HomeView 分组列表', () => {
     selectFilters(w, [gA.id, gB.id])
     await nextTick()
 
+    expect(cardNames(w)).toEqual(['工作', '个人'])
     expect(rowIssuers(w)).toEqual(['GitHub', 'Google'])
-    expect(rowTags(w)).toEqual(['工作', '个人'])
 
     // 分组与未分组混选,顺序仍为分组在前、未分组最后
     selectFilters(w, [gB.id, '__ungrouped__'])
     await nextTick()
 
+    expect(cardNames(w)).toEqual(['个人', '未分组'])
     expect(rowIssuers(w)).toEqual(['Google', 'Apple'])
-    expect(rowTags(w)).toEqual(['个人', '未分组'])
   })
 
   it('"全部"与具体分组互斥:新勾选全部替换原选择,在全部基础上勾选分组则移除全部', async () => {
@@ -382,7 +406,7 @@ describe('HomeView 分组列表', () => {
     selectFilters(w, ['__all__', gB.id])
     await nextTick()
     expect(rowIssuers(w)).toEqual(['GitHub', 'Google'])
-    expect(rowTags(w)).toEqual(['工作', '个人'])
+    expect(cardNames(w)).toEqual(['工作', '个人'])
   })
 
   it('清空选择后回退到全部视图', async () => {
@@ -398,7 +422,7 @@ describe('HomeView 分组列表', () => {
     await nextTick()
 
     expect(rowIssuers(w)).toEqual(['GitHub'])
-    expect(rowTags(w)).toEqual(['工作'])
+    expect(cardNames(w)).toEqual(['工作'])
   })
 
   it('删除当前筛选的分组后自动回退到全部视图', async () => {
@@ -439,7 +463,7 @@ describe('HomeView 分组列表', () => {
     expect(store.data.groups.map((g) => g.name)).toEqual(['个人', '工作'])
   })
 
-  it('单分组视图下的行内菜单携带正确的分组上下文', async () => {
+  it('分组卡片内的行内菜单携带正确的分组上下文', async () => {
     const store = useTotpStore()
     const gA = store.addGroup('工作')
     const gitHub = store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
@@ -449,13 +473,10 @@ describe('HomeView 分组列表', () => {
     const w = await mountHome()
     await nextTick()
 
-    selectFilter(w, gA.id)
-    await nextTick()
-
+    // 工作组卡片内的 GitHub 行 → 编辑动作携带其密钥 id
     rowWrappers(w)[0].vm.$emit('menu', 'edit')
     await flushPromises()
 
-    // 编辑动作应携带所选行的密钥 id
     expect(router.currentRoute.value.path).toBe('/edit')
     expect(router.currentRoute.value.query.id).toBe(gitHub.id)
     expect(store.findItem(apple.id)).not.toBeNull()

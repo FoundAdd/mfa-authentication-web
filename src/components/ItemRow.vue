@@ -22,7 +22,6 @@
     <div class="meta">
       <div class="issuer">
         <span class="issuer-text">{{ item.issuer || t('migration.unknownIssuer') }}</span>
-        <span v-if="groupTag" class="group-tag">{{ groupTag }}</span>
       </div>
       <div v-if="item.label" class="label">{{ item.label }}</div>
     </div>
@@ -74,8 +73,6 @@ const props = defineProps<{
   item: TotpItem
   batchMode: boolean
   selected: boolean
-  /** 分组名标注;仅在多分组共存的视图(全部/搜索)下由父组件传入 */
-  groupTag?: string
 }>()
 
 const emit = defineEmits<{
@@ -202,21 +199,6 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.group-tag {
-  flex-shrink: 0;
-  max-width: 96px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  line-height: 18px;
-  font-weight: 400;
-  padding: 0 6px;
-  border-radius: 4px;
-  background: #f0f2f5;
-  color: #909399;
 }
 
 .label {
