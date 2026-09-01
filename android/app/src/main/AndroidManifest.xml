@@ -45,4 +45,7 @@
     <uses-permission
         android:name="android.permission.ACCESS_NETWORK_STATE"
         tools:node="remove" />
+    <!-- 应用内更新:下载 Release APK 后调起系统安装器所必需;
+         更新检测可在 App 设置中完全关闭 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

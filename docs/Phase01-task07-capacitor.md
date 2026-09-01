@@ -1,7 +1,7 @@
 # Task Phase1-07: Capacitor Android 集成
 
 > 依赖: 01 (可提前初始化) / 05 (扫码接线)
-> 对应 README: 模块 5 全部
+> 对应 docs/Phase01.md: 模块 5 全部
 
 ## 目标
 完成 Android 工程初始化、权限裁剪、插件集成与本地真机跑通。
