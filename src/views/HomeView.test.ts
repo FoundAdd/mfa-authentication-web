@@ -515,3 +515,94 @@ describe('HomeView 分组卡片列表', () => {
     expect(store.findItem(apple.id)).not.toBeNull()
   })
 })
+
+describe('HomeView 拖拽排序', () => {
+  function seedForDrag(store: ReturnType<typeof useTotpStore>) {
+    const gA = store.addGroup('工作')
+    const gB = store.addGroup('个人')
+    const a1 = store.addItem(gA.id, item('A1', 'a1', 'JBSWY3DPEHPK3PXP'))
+    const a2 = store.addItem(gA.id, item('A2', 'a2', 'KRSXG5CTMVRXEZLU'))
+    const b1 = store.addItem(gB.id, item('B1', 'b1', 'MFRGGZDFMZTWQ2LK'))
+    const u1 = store.addItem(null, item('U1', 'u1', 'MZXW6YTBOI======'))
+    const u2 = store.addItem(null, item('U2', 'u2', 'GEZDGNBVGY3TQOJQ'))
+    return { gA, gB, a1, a2, b1, u1, u2 }
+  }
+
+  it('全部视图渲染可拖拽列表,并保留分组名标注', async () => {
+    const store = useTotpStore()
+    seedForDrag(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    expect(rowIssuers(w)).toEqual(['A1', 'A2', 'B1', 'U1', 'U2'])
+    expect(rowTags(w)).toEqual(['工作', '工作', '个人', '未分组', '未分组'])
+  })
+
+  it('平铺拖拽结果映射回容器:未分组内部重排不影响分组条目', async () => {
+    const store = useTotpStore()
+    const { a1, a2, u1, u2 } = seedForDrag(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    // 模拟 Sortable 落地后的新平铺顺序:U2 与 U1 对调
+    ;(w.vm as unknown as { filteredItems: TotpItem[] }).filteredItems = [
+      a1,
+      a2,
+      u2,
+      u1,
+    ]
+    await nextTick()
+
+    expect(store.data.ungrouped.map((i) => i.issuer)).toEqual(['U2', 'U1'])
+    expect(store.data.groups[0].items.map((i) => i.issuer)).toEqual(['A1', 'A2'])
+  })
+
+  it('子集筛选下重排仅影响所选容器,其余容器原样保留', async () => {
+    const store = useTotpStore()
+    const { gA, a1, a2 } = seedForDrag(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    selectFilter(w, gA.id)
+    await nextTick()
+
+    ;(w.vm as unknown as { filteredItems: TotpItem[] }).filteredItems = [a2, a1]
+    await nextTick()
+
+    expect(store.data.groups[0].items.map((i) => i.issuer)).toEqual(['A2', 'A1'])
+    expect(store.data.groups[1].items.map((i) => i.issuer)).toEqual(['B1'])
+  })
+
+  it('move 守卫:同容器落点放行,跨容器落点拒绝', async () => {
+    const store = useTotpStore()
+    const { a1, a2, u1 } = seedForDrag(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    const vm = w.vm as unknown as {
+      onDragMove: (evt: unknown) => boolean
+    }
+    expect(
+      vm.onDragMove({
+        draggedContext: { element: a1 },
+        relatedContext: { element: a2 },
+      }),
+    ).toBe(true)
+    expect(
+      vm.onDragMove({
+        draggedContext: { element: a1 },
+        relatedContext: { element: u1 },
+      }),
+    ).toBe(false)
+    // 缺少上下文时不拦截
+    expect(vm.onDragMove({})).toBe(true)
+  })
+})

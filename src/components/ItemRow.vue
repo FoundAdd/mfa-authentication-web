@@ -91,7 +91,10 @@ let pressTimer: ReturnType<typeof setTimeout> | null = null
 const LONG_PRESS_MS = 500
 let suppressClick = false
 
-function onPressStart() {
+function onPressStart(e: PointerEvent) {
+  // 拖动把手是纯拖拽入口:拖拽手势常超过长按阈值,若按下把手也启动
+  // 长按计时,会在拖拽中途触发多选(禁用拖拽并移除把手),导致排序失效
+  if ((e.target as Element | null)?.closest('.drag-handle')) return
   // 批量模式下长按用于区间选择,同样需要监听
   if (pressTimer) return
   pressTimer = setTimeout(() => {
@@ -161,6 +164,9 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
   cursor: grab;
   display: flex;
   align-items: center;
+  /* 把手仅用于拖拽:阻止触屏把该手势判定为页面滚动(会派发
+     pointercancel 中断拖拽),列表滚动从行体其余区域进行 */
+  touch-action: none;
 }
 
 .select-badge {

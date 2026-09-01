@@ -1,7 +1,7 @@
 # Task Phase1-08: CI/CD 自动化构建
 
 > 依赖: 01/02/09 (lint/typecheck/test 脚本就绪) / 07 (android 目录存在)
-> 对应 README: 模块 6 全部
+> 对应 docs/Phase01.md: 模块 6 全部
 
 ## 目标
 编写 tag 触发的 release workflow,产出 Web 部署、web.zip 与签名 APK。
@@ -35,3 +35,26 @@
 ## 状态: 已完成 (2026-08-11)
 
 > 说明: workflow 与本地 release 签名链路已验证;真实 GitHub tag 触发、Cloudflare Pages 与 Release 上传需在仓库配置 Secrets 后做线上复核。
+
+---
+
+## 追加任务 (2026-09-01): Release 发布说明自动总结
+
+> 需求来源: 后续追加,不属于 docs/Phase01.md 原始模块 6 范围
+
+### 目标
+发布 Release 时自动总结上一个 Release 与本次发布之间的提交记录,将功能性更新(feat/fix)作为发布说明,替代手写说明。
+
+### 具体工作
+1. 新增 `scripts/release-notes.mjs`: `git for-each-ref` 按版本号倒序定位上一个 Release tag(排除本次 tag),`git log <prev>..HEAD` 提取区间提交,按 conventional commits 归类为"功能更新"(feat)与"问题修复"(fix)两节写入 `release-notes.md`;首次发布(无前序 tag)总结全部历史;生成失败不阻塞发版,写入兜底文案。
+2. `release.yml` 两个 Job 的 checkout 改为 `fetch-depth: 0`(需要完整提交历史与 tag 列表),新增 "Generate release notes" 步骤,`softprops/action-gh-release` 上传产物时以 `body_path: release-notes.md` 注入发布说明。
+3. `release-notes.md` 加入 `.gitignore`。
+
+### 验收标准
+- [x] 发布说明仅包含上次 Release 以来的 feat/fix 提交,按"功能更新/问题修复"分组
+- [x] 以仓库真实 tag(v1.0.1)本地干跑,输出仅含其后的 4 条 feat、1 条 fix
+- [x] 发布说明生成失败不阻塞构建与产物上传
+
+### 状态: 已完成 (2026-09-01)
+
+> 说明: Gitea 兼容分叉的 action-gh-release 对 `body_path` 的支持需在下次发版时线上复核。
