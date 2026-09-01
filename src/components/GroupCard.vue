@@ -144,9 +144,10 @@ function onMenuCommand(command: string) {
 <style scoped>
 .group-card {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-bottom: 12px;
   overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 /* 实底主题蓝头部:与白色页面背景形成强对比,分组名醒目可辨 */
@@ -154,7 +155,7 @@ function onMenuCommand(command: string) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 11px 14px;
   background: #409eff;
   color: #fff;
 }
@@ -194,8 +195,11 @@ function onMenuCommand(command: string) {
 
 .group-count {
   flex-shrink: 0;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+  padding: 1px 9px;
+  border-radius: 9px;
 }
 
 .more-btn {
