@@ -309,7 +309,7 @@ async function onSave() {
 .title {
   font-size: 17px;
   font-weight: 700;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .content {
@@ -319,7 +319,7 @@ async function onSave() {
 }
 
 .card {
-  background: #fff;
+  background: var(--el-bg-color);
   border-radius: 8px;
   padding: 16px;
 }
@@ -331,24 +331,24 @@ async function onSave() {
 .field-label {
   display: block;
   font-size: 13px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   margin-bottom: 6px;
 }
 
 .error-text {
-  color: #f56c6c;
+  color: var(--el-color-danger);
   font-size: 12px;
   margin-top: 4px;
 }
 
 .hint-text {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
   margin-top: 4px;
 }
 
 .invalid :deep(.el-input__wrapper) {
-  box-shadow: 0 0 0 1px #f56c6c inset;
+  box-shadow: 0 0 0 1px var(--el-color-danger) inset;
 }
 
 .group-select,
@@ -362,7 +362,7 @@ async function onSave() {
   justify-content: space-between;
   cursor: pointer;
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   padding: 4px 0;
 }
 
@@ -384,7 +384,7 @@ async function onSave() {
 .preview-title {
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .preview-body {
@@ -397,11 +397,11 @@ async function onSave() {
   font-weight: 700;
   font-family: 'SF Mono', 'Roboto Mono', Menlo, Consolas, monospace;
   letter-spacing: 2px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .preview-desc {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
   margin-top: 8px;
 }
@@ -411,7 +411,7 @@ async function onSave() {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
@@ -423,7 +423,7 @@ async function onSave() {
 .notfound {
   text-align: center;
   padding: 48px 16px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 .notfound p {
   margin-bottom: 16px;

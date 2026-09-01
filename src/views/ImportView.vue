@@ -223,7 +223,7 @@ async function confirmImport() {
 .title {
   font-size: 17px;
   font-weight: 700;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .content {
@@ -238,8 +238,8 @@ async function confirmImport() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #fff;
-  border: 1px dashed #dcdfe6;
+  background: var(--el-bg-color);
+  border: 1px dashed var(--el-border-color);
   border-radius: 10px;
   padding: 36px 16px;
   cursor: pointer;
@@ -248,32 +248,32 @@ async function confirmImport() {
 }
 
 .dropzone:hover {
-  border-color: #409eff;
+  border-color: var(--el-color-primary);
 }
 
 .drop-icon {
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .drop-title {
   font-size: 15px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .drop-hint {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .card {
-  background: #fff;
+  background: var(--el-bg-color);
   border-radius: 8px;
   padding: 16px;
 }
 
 .encrypted-hint {
   font-size: 13px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   margin-bottom: 16px;
 }
 
@@ -284,7 +284,7 @@ async function confirmImport() {
 .field-label {
   display: block;
   font-size: 13px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   margin-bottom: 6px;
 }
 
@@ -293,7 +293,7 @@ async function confirmImport() {
 }
 
 .error-msg {
-  color: #f56c6c;
+  color: var(--el-color-danger);
   font-size: 13px;
   text-align: center;
 }
@@ -301,13 +301,13 @@ async function confirmImport() {
 .summary {
   text-align: center;
   font-size: 15px;
-  color: #303133;
+  color: var(--el-text-color-primary);
   padding: 8px 0;
 }
 
 .mode-label {
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   margin-bottom: 8px;
 }
 
@@ -318,8 +318,8 @@ async function confirmImport() {
 }
 
 .mode-option {
-  background: #fff;
-  border: 1px solid #ebeef5;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
   padding: 14px 16px;
   cursor: pointer;
@@ -327,19 +327,19 @@ async function confirmImport() {
 }
 
 .mode-option.active {
-  border-color: #409eff;
+  border-color: var(--el-color-primary);
 }
 
 .mode-name {
   font-size: 15px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
   margin-bottom: 4px;
 }
 
 .mode-desc {
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .confirm-btn {

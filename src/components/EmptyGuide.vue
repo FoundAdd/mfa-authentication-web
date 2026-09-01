@@ -40,19 +40,19 @@ const { t } = useI18n()
 }
 
 .empty-icon {
-  color: #409eff;
+  color: var(--el-color-primary);
   margin-bottom: 16px;
 }
 
 .empty-title {
   font-size: 20px;
-  color: #303133;
+  color: var(--el-text-color-primary);
   margin-bottom: 8px;
 }
 
 .empty-subtitle {
   font-size: 14px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   margin-bottom: 32px;
   max-width: 320px;
   line-height: 1.6;

@@ -33,10 +33,10 @@ const { t } = useI18n()
   display: flex;
   gap: 10px;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: #fff;
-  border-top: 1px solid #f0f0f0;
+  background: var(--el-bg-color);
+  border-top: 1px solid var(--el-border-color-lighter);
   z-index: 20;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--app-shadow-bar);
 }
 
 .batch-bar :deep(.el-button) {

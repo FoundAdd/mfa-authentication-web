@@ -149,18 +149,18 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--el-bg-color);
+  border-bottom: 1px solid var(--el-border-color-lighter);
   user-select: none;
   touch-action: manipulation;
 }
 
 .item-row.selected {
-  background: #ecf5ff;
+  background: var(--el-color-primary-light-9);
 }
 
 .item-grip {
-  color: #c0c4cc;
+  color: var(--el-text-color-placeholder);
   cursor: grab;
   display: flex;
   align-items: center;
@@ -173,7 +173,7 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 2px solid #c0c4cc;
+  border: 2px solid var(--el-border-color-darker);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,8 +182,8 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
 }
 
 .select-badge.checked {
-  background: #409eff;
-  border-color: #409eff;
+  background: var(--el-color-primary);
+  border-color: var(--el-color-primary);
 }
 
 .meta {
@@ -197,7 +197,7 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
   gap: 6px;
   font-size: 15px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
   min-width: 0;
 }
 
@@ -209,7 +209,7 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
 
 .label {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -230,7 +230,7 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
   font-weight: 700;
   font-family: 'SF Mono', 'Roboto Mono', Menlo, Consolas, monospace;
   letter-spacing: 1px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .more {
@@ -241,7 +241,7 @@ function onCommand(action: 'edit' | 'move' | 'delete') {
 .more-btn {
   display: flex;
   align-items: center;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   cursor: pointer;
   padding: 4px;
 }

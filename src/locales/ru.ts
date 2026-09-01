@@ -30,6 +30,9 @@ export default {
     title: 'Настройки',
     language: 'Язык',
     followSystem: 'Как в системе',
+    theme: 'Тема',
+    themeLight: 'Светлая',
+    themeDark: 'Тёмная',
     data: 'Данные',
   },
   totp: {

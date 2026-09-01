@@ -30,6 +30,9 @@ export default {
     title: '設定',
     language: '言語',
     followSystem: 'システムに従う',
+    theme: 'テーマ',
+    themeLight: 'ライト',
+    themeDark: 'ダーク',
     data: 'データ管理',
   },
   totp: {
