@@ -150,14 +150,15 @@ function onMenuCommand(command: string) {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-/* 实底主题蓝头部:与白色页面背景形成强对比,分组名醒目可辨 */
+/* 头部:浅蓝底 + 主题蓝粗体字(Element primary-light 风格) */
 .group-header {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 11px 14px;
-  background: #409eff;
-  color: #fff;
+  background: #ecf5ff;
+  border-bottom: 1px solid #d9ecff;
+  color: #409eff;
 }
 
 .group-card:not(.readonly) .group-header {
@@ -165,14 +166,14 @@ function onMenuCommand(command: string) {
 }
 
 .group-grip {
-  color: rgba(255, 255, 255, 0.85);
+  color: #a0cfff;
   cursor: grab;
   display: flex;
   align-items: center;
 }
 
 .chevron {
-  color: rgba(255, 255, 255, 0.9);
+  color: #409eff;
   font-size: 14px;
   transition: transform 0.2s;
   flex-shrink: 0;
@@ -186,8 +187,8 @@ function onMenuCommand(command: string) {
   flex: 1;
   min-width: 0;
   font-size: 14px;
-  font-weight: 600;
-  color: #fff;
+  font-weight: 700;
+  color: #409eff;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -195,23 +196,20 @@ function onMenuCommand(command: string) {
 
 .group-count {
   flex-shrink: 0;
-  font-size: 11px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.22);
-  padding: 1px 9px;
-  border-radius: 9px;
+  font-size: 12px;
+  color: #909399;
 }
 
 .more-btn {
   display: flex;
   align-items: center;
-  color: rgba(255, 255, 255, 0.9);
+  color: #409eff;
   cursor: pointer;
   padding: 4px;
 }
 
 .group-body {
-  border-top: 1px solid #f5f5f5;
+  border-top: none;
 }
 
 .group-empty {
