@@ -73,9 +73,13 @@ beforeEach(async () => {
   setActivePinia(createPinia())
 })
 
-afterEach(() => {
+afterEach(async () => {
   wrapper?.unmount()
   wrapper = null
+  // 深度订阅的防抖持久化在微任务中排队:先冲刷 watcher 再落盘,
+  // 取消遗留定时器,避免其在测试环境销毁后触发(localStorage 未定义)
+  await nextTick()
+  await useTotpStore().saveNow()
 })
 
 describe('ExportDialog 二维码导出', () => {

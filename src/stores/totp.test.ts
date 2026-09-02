@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import localforage from 'localforage'
 import { useTotpStore } from '@/stores/totp'
@@ -20,6 +21,13 @@ beforeEach(async () => {
   localStorage.removeItem('_dk')
   localStorage.removeItem('_backup_reminded')
   setActivePinia(createPinia())
+})
+
+afterEach(async () => {
+  // 冲刷深度订阅的防抖持久化并立即落盘,避免遗留定时器
+  // 在测试环境销毁后触发(localStorage 未定义的未处理拒绝)
+  await nextTick()
+  await useTotpStore().saveNow()
 })
 
 describe('group delete semantics', () => {

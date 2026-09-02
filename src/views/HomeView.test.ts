@@ -86,7 +86,9 @@ beforeEach(async () => {
 afterEach(async () => {
   wrapper?.unmount()
   wrapper = null
-  // 取消未落地的防抖持久化,避免跨测试污染存储
+  // 取消未落地的防抖持久化,避免跨测试污染存储;
+  // 先冲刷深度订阅的 watcher,确保 saveNow 能取到新排的定时器
+  await nextTick()
   await useTotpStore().saveNow()
 })
 
