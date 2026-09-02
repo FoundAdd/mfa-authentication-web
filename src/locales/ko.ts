@@ -63,6 +63,8 @@ export default {
     count: '{count}개 항목',
     moveUp: '위로 이동',
     moveDown: '아래로 이동',
+    moveToNew: '새 그룹 만들어 이동',
+    moveToNewConfirm: '만들고 이동',
   },
   empty: {
     title: '더 이상 키가 없습니다',

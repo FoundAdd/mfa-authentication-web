@@ -63,6 +63,8 @@ export default {
     count: 'Записей: {count}',
     moveUp: 'Вверх',
     moveDown: 'Вниз',
+    moveToNew: 'Новая группа и переместить',
+    moveToNewConfirm: 'Создать и переместить',
   },
   empty: {
     title: 'Ключей больше нет',

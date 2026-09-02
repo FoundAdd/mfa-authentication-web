@@ -63,6 +63,8 @@ export default {
     count: '{count} Einträge',
     moveUp: 'Nach oben',
     moveDown: 'Nach unten',
+    moveToNew: 'Neue Gruppe und verschieben',
+    moveToNewConfirm: 'Erstellen und verschieben',
   },
   empty: {
     title: 'Keine weiteren Schlüssel',

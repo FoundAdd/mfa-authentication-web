@@ -63,6 +63,8 @@ export default {
     count: '{count} items',
     moveUp: 'Omhoog verplaatsen',
     moveDown: 'Omlaag verplaatsen',
+    moveToNew: 'Nieuwe groep en verplaatsen',
+    moveToNewConfirm: 'Maken en verplaatsen',
   },
   empty: {
     title: 'Geen sleutels meer',

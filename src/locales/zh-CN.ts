@@ -63,6 +63,8 @@ export default {
     count: '{count} 项',
     moveUp: '上移分组',
     moveDown: '下移分组',
+    moveToNew: '新增分组并移动',
+    moveToNewConfirm: '创建并移入',
   },
   empty: {
     title: '没有更多密钥了',

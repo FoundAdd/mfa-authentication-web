@@ -63,6 +63,8 @@ export default {
     count: '{count} 件',
     moveUp: '上へ移動',
     moveDown: '下へ移動',
+    moveToNew: '新規グループを作成して移動',
+    moveToNewConfirm: '作成して移動',
   },
   empty: {
     title: 'キーはこれ以上ありません',
