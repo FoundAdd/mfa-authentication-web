@@ -143,11 +143,11 @@ function onMenuCommand(command: string) {
 
 <style scoped>
 .group-card {
-  background: #fff;
+  background: var(--el-bg-color);
   border-radius: 10px;
   margin-bottom: 12px;
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--app-shadow-card);
 }
 
 /* 头部:浅蓝底 + 主题蓝粗体字(Element primary-light 风格) */
@@ -156,9 +156,9 @@ function onMenuCommand(command: string) {
   align-items: center;
   gap: 8px;
   padding: 11px 14px;
-  background: #ecf5ff;
-  border-bottom: 1px solid #d9ecff;
-  color: #409eff;
+  background: var(--el-color-primary-light-9);
+  border-bottom: 1px solid var(--el-color-primary-light-8);
+  color: var(--el-color-primary);
 }
 
 .group-card:not(.readonly) .group-header {
@@ -166,14 +166,14 @@ function onMenuCommand(command: string) {
 }
 
 .group-grip {
-  color: #a0cfff;
+  color: var(--el-color-primary-light-5);
   cursor: grab;
   display: flex;
   align-items: center;
 }
 
 .chevron {
-  color: #409eff;
+  color: var(--el-color-primary);
   font-size: 14px;
   transition: transform 0.2s;
   flex-shrink: 0;
@@ -188,7 +188,7 @@ function onMenuCommand(command: string) {
   min-width: 0;
   font-size: 14px;
   font-weight: 700;
-  color: #409eff;
+  color: var(--el-color-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -197,13 +197,13 @@ function onMenuCommand(command: string) {
 .group-count {
   flex-shrink: 0;
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .more-btn {
   display: flex;
   align-items: center;
-  color: #409eff;
+  color: var(--el-color-primary);
   cursor: pointer;
   padding: 4px;
 }
@@ -215,7 +215,7 @@ function onMenuCommand(command: string) {
 .group-empty {
   padding: 16px;
   text-align: center;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 </style>

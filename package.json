@@ -22,6 +22,7 @@
     "@capacitor/core": "^7.6.8",
     "@capacitor/filesystem": "^7.1.8",
     "@capacitor/share": "^7.0.4",
+    "@capacitor/status-bar": "^7.0.6",
     "@element-plus/icons-vue": "^2.3.2",
     "@vueuse/core": "^13.1.0",
     "element-plus": "^2.9.8",

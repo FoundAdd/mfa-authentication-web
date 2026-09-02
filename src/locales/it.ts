@@ -30,6 +30,9 @@ export default {
     title: 'Impostazioni',
     language: 'Lingua',
     followSystem: 'Segui il sistema',
+    theme: 'Tema',
+    themeLight: 'Chiaro',
+    themeDark: 'Scuro',
     data: 'Dati',
   },
   totp: {

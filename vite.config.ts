@@ -21,8 +21,8 @@ export default defineConfig({
         name: 'MFA Authenticator',
         short_name: 'MFA Auth',
         description: 'TOTP Key Manager',
-        theme_color: '#1a1a2e',
-        background_color: '#1a1a2e',
+        theme_color: '#f5f5f5',
+        background_color: '#f5f5f5',
         display: 'standalone',
         icons: [
           {

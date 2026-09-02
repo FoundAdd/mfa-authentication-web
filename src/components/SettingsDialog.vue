@@ -23,6 +23,19 @@
 
       <div class="divider" />
 
+      <div class="settings-label">{{ t('settings.theme') }}</div>
+      <el-select
+        :model-value="settingStore.theme"
+        class="language-select"
+        @update:model-value="onThemeChange"
+      >
+        <el-option value="follow-system" :label="t('settings.followSystem')" />
+        <el-option value="light" :label="t('settings.themeLight')" />
+        <el-option value="dark" :label="t('settings.themeDark')" />
+      </el-select>
+
+      <div class="divider" />
+
       <div class="settings-label">{{ t('settings.data') }}</div>
       <el-button
         class="import-btn"
@@ -86,6 +99,7 @@ import { useAppUpdateStore } from '@/stores/appUpdate'
 import { getInstalledVersion } from '@/services/appUpdate'
 import { SUPPORTED_LOCALES, LOCALE_NATIVE_NAMES } from '@/locales'
 import type { LocalePreference } from '@/locales'
+import type { ThemePreference } from '@/stores/settings'
 import { isNativePlatform } from '@/utils/capacitor'
 import ResponsiveDialog from './ResponsiveDialog.vue'
 import ExportDialog from './ExportDialog.vue'
@@ -124,6 +138,10 @@ function onLocaleChange(value: LocalePreference) {
   void settingStore.setLocalePreference(value)
 }
 
+function onThemeChange(value: ThemePreference) {
+  void settingStore.setThemePreference(value)
+}
+
 async function onUpdateCheckChange(value: string | number | boolean) {
   const enabled = Boolean(value)
   await settingStore.setUpdateCheckEnabled(enabled)
@@ -156,7 +174,7 @@ async function onCheckUpdate() {
 
 .settings-label {
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 .language-select {
@@ -164,7 +182,7 @@ async function onCheckUpdate() {
 }
 
 .divider {
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--el-border-color-lighter);
   margin: 4px 0;
 }
 
@@ -177,12 +195,12 @@ async function onCheckUpdate() {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .update-hint {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .check-row {
@@ -197,6 +215,6 @@ async function onCheckUpdate() {
 
 .version-text {
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 </style>

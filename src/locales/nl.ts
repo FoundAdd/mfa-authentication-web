@@ -30,6 +30,9 @@ export default {
     title: 'Instellingen',
     language: 'Taal',
     followSystem: 'Systeeminstelling volgen',
+    theme: 'Thema',
+    themeLight: 'Licht',
+    themeDark: 'Donker',
     data: 'Gegevens',
   },
   totp: {

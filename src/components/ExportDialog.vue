@@ -278,7 +278,7 @@ function reset() {
 }
 
 .export-empty {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 14px;
   padding: 12px 0;
 }
@@ -290,19 +290,19 @@ function reset() {
 .field-label {
   display: block;
   font-size: 13px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   margin-bottom: 6px;
 }
 
 .error-text {
-  color: #f56c6c;
+  color: var(--el-color-danger);
   font-size: 12px;
 }
 
 .warning-box {
-  background: #fdf6ec;
-  border: 1px solid #f3d19e;
-  color: #b88230;
+  background: var(--el-color-warning-light-9);
+  border: 1px solid var(--el-color-warning-light-5);
+  color: var(--app-warning-text);
   border-radius: 6px;
   padding: 10px 12px;
   font-size: 13px;
@@ -315,7 +315,7 @@ function reset() {
 
 .qr-box {
   width: min(260px, 70vw);
-  background: #fff;
+  background: var(--el-bg-color);
 }
 
 .qr-box :deep(svg) {
@@ -327,7 +327,7 @@ function reset() {
 .qr-page {
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .qr-nav {
@@ -341,7 +341,7 @@ function reset() {
 
 .qr-hint {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   line-height: 1.6;
   text-align: center;
 }

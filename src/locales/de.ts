@@ -30,6 +30,9 @@ export default {
     title: 'Einstellungen',
     language: 'Sprache',
     followSystem: 'Systemeinstellung folgen',
+    theme: 'Design',
+    themeLight: 'Hell',
+    themeDark: 'Dunkel',
     data: 'Daten',
   },
   totp: {

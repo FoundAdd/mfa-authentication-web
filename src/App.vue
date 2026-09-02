@@ -71,6 +71,6 @@ html, body, #app {
 
 #app-root {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--app-bg);
 }
 </style>

@@ -96,34 +96,34 @@ function onVisibleChange(value: boolean) {
 
 .version-line {
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 .notes-label {
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 .notes {
   max-height: 200px;
   overflow-y: auto;
   padding: 10px;
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
   border-radius: 6px;
   font-size: 13px;
   line-height: 1.6;
-  color: #303133;
+  color: var(--el-text-color-primary);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .status {
   font-size: 14px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .status.error {
-  color: #f56c6c;
+  color: var(--el-color-danger);
 }
 
 .footer-buttons {
@@ -135,6 +135,6 @@ function onVisibleChange(value: boolean) {
 
 .downloading-text {
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 </style>

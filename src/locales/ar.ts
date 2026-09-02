@@ -30,6 +30,9 @@ export default {
     title: 'الإعدادات',
     language: 'اللغة',
     followSystem: 'حسب النظام',
+    theme: 'المظهر',
+    themeLight: 'فاتح',
+    themeDark: 'داكن',
     data: 'البيانات',
   },
   totp: {

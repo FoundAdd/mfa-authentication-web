@@ -1,0 +1,29 @@
+/**
+ * 应用级主题变量。
+ * Element Plus 的语义变量由官方 dark/css-vars.css 在 html.dark 下自动翻转,
+ * 这里只补充 EP 未覆盖的应用级表面色;业务样式禁止再出现硬编码颜色
+ * (例外:ScanView 相机页恒为深色 UI,AvatarIcon/二维码等身份色不随主题)。
+ */
+:root {
+  --app-bg: #f5f5f5;
+  --app-topbar-bg: rgba(245, 245, 245, 0.95);
+  --app-shadow-card: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --app-shadow-bar: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  --app-warning-text: #b88230;
+}
+
+html.dark {
+  --app-bg: #0a0a0a;
+  --app-topbar-bg: rgba(10, 10, 10, 0.85);
+  --app-shadow-card: 0 1px 4px rgba(0, 0, 0, 0.45);
+  --app-shadow-bar: 0 -2px 8px rgba(0, 0, 0, 0.45);
+  --app-warning-text: #eebe77;
+}
+
+html {
+  background: var(--app-bg);
+}
+
+body {
+  background: var(--app-bg);
+}

@@ -30,6 +30,9 @@ export default {
     title: '설정',
     language: '언어',
     followSystem: '시스템 따르기',
+    theme: '테마',
+    themeLight: '라이트',
+    themeDark: '다크',
     data: '데이터',
   },
   totp: {

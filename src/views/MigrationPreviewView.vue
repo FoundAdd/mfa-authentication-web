@@ -167,12 +167,12 @@ onMounted(() => {
 .title {
   font-size: 17px;
   font-weight: 700;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .subtitle {
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   margin: 8px 0 12px;
 }
 
@@ -181,7 +181,7 @@ onMounted(() => {
 }
 
 .account-list {
-  background: #fff;
+  background: var(--el-bg-color);
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 16px;
@@ -192,7 +192,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--el-border-color-extra-light);
   cursor: pointer;
 }
 
@@ -201,7 +201,7 @@ onMounted(() => {
 }
 
 .account-item.selected {
-  background: #ecf5ff;
+  background: var(--el-color-primary-light-9);
 }
 
 .account-info {
@@ -212,12 +212,12 @@ onMounted(() => {
 .issuer {
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .label {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -225,7 +225,7 @@ onMounted(() => {
 
 .meta {
   font-size: 12px;
-  color: #b0b3b8;
+  color: var(--el-text-color-placeholder);
   white-space: nowrap;
 }
 
@@ -236,7 +236,7 @@ onMounted(() => {
 
 .error {
   text-align: center;
-  color: #606266;
+  color: var(--el-text-color-regular);
   padding: 48px 16px;
 }
 

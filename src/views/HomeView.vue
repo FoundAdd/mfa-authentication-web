@@ -660,14 +660,14 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
   padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px 12px;
-  background: rgba(245, 245, 245, 0.95);
+  background: var(--app-topbar-bg);
   backdrop-filter: blur(6px);
 }
 
 .app-name {
   font-size: 17px;
   font-weight: 700;
-  color: #303133;
+  color: var(--el-text-color-primary);
   white-space: nowrap;
 }
 
@@ -679,7 +679,7 @@ onMounted(async () => {
 .batch-title {
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .spacer {
@@ -715,14 +715,14 @@ onMounted(async () => {
 
 .empty-state p {
   text-align: center;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   padding: 48px 16px;
   font-size: 14px;
 }
 
 .dialog-msg {
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   line-height: 1.6;
   margin-bottom: 8px;
 }
@@ -746,9 +746,9 @@ onMounted(async () => {
   padding: 12px 14px;
   border-radius: 6px;
   cursor: pointer;
-  color: #303133;
+  color: var(--el-text-color-primary);
   font-size: 14px;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--el-border-color-extra-light);
 }
 
 .move-target:last-child {
@@ -756,12 +756,12 @@ onMounted(async () => {
 }
 
 .move-target:active {
-  background: #ecf5ff;
+  background: var(--el-color-primary-light-9);
 }
 
 .group-delete-msg {
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   line-height: 1.6;
   margin-bottom: 16px;
 }
