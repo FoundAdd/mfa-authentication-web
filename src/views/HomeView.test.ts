@@ -6,8 +6,10 @@ import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import ElementPlus from 'element-plus'
 import localforage from 'localforage'
+import draggable from 'vuedraggable'
 import HomeView from './HomeView.vue'
 import ItemRow from '@/components/ItemRow.vue'
+import GroupCard from '@/components/GroupCard.vue'
 import { useTotpStore } from '@/stores/totp'
 import zhCN from '@/locales/zh-CN'
 import type { TotpItem } from '@/types'
@@ -528,7 +530,16 @@ describe('HomeView 拖拽排序', () => {
     return { gA, gB, a1, a2, b1, u1, u2 }
   }
 
-  it('全部视图渲染可拖拽列表,并保留分组名标注', async () => {
+  /** 按卡片标题定位分组卡片("未分组"标题来自文案) */
+  function findCard(w: VueWrapper, name: string) {
+    const card = w
+      .findAllComponents(GroupCard)
+      .find((c) => c.props('name') === name)
+    if (!card) throw new Error(`group card not found: ${name}`)
+    return card
+  }
+
+  it('全部视图按卡片渲染,分组卡片带整卡拖拽把手', async () => {
     const store = useTotpStore()
     seedForDrag(store)
     await store.saveNow()
@@ -536,34 +547,54 @@ describe('HomeView 拖拽排序', () => {
     const w = await mountHome()
     await nextTick()
 
+    expect(cardNames(w)).toEqual(['工作', '个人', '未分组'])
     expect(rowIssuers(w)).toEqual(['A1', 'A2', 'B1', 'U1', 'U2'])
-    expect(rowTags(w)).toEqual(['工作', '工作', '个人', '未分组', '未分组'])
+    // 分组名由卡片标题承载;仅分组卡片有拖拽把手,未分组固定在最后
+    expect(w.findAll('.group-grip')).toHaveLength(2)
   })
 
-  it('平铺拖拽结果映射回容器:未分组内部重排不影响分组条目', async () => {
+  it('整卡拖拽落地后持久化新的分组顺序', async () => {
     const store = useTotpStore()
-    const { a1, a2, u1, u2 } = seedForDrag(store)
+    const { gA, gB } = seedForDrag(store)
     await store.saveNow()
 
     const w = await mountHome()
     await nextTick()
 
-    // 模拟 Sortable 落地后的新平铺顺序:U2 与 U1 对调
-    ;(w.vm as unknown as { filteredItems: TotpItem[] }).filteredItems = [
-      a1,
-      a2,
-      u2,
-      u1,
-    ]
+    // 模拟 vuedraggable 落地:以新顺序回推 v-model
+    const sort = w
+      .findAllComponents(draggable)
+      .find((d) => d.classes().includes('group-sort'))
+    if (!sort) throw new Error('group-sort draggable not found')
+    sort.vm.$emit('update:modelValue', [gB, gA])
+    await nextTick()
+
+    expect(store.data.groups.map((g) => g.id)).toEqual([gB.id, gA.id])
+    expect(cardNames(w)).toEqual(['个人', '工作', '未分组'])
+  })
+
+  it('未分组卡片内拖拽重排:仅映射回未分组,分组条目不受影响', async () => {
+    const store = useTotpStore()
+    seedForDrag(store)
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+
+    // 模拟 Sortable 落地后的原地重排:U2 与 U1 对调
+    const ungrouped = store.data.ungrouped
+    ;[ungrouped[0], ungrouped[1]] = [ungrouped[1], ungrouped[0]]
+    findCard(w, '未分组').vm.$emit('itemDragEnd')
     await nextTick()
 
     expect(store.data.ungrouped.map((i) => i.issuer)).toEqual(['U2', 'U1'])
     expect(store.data.groups[0].items.map((i) => i.issuer)).toEqual(['A1', 'A2'])
+    expect(store.data.groups[1].items.map((i) => i.issuer)).toEqual(['B1'])
   })
 
-  it('子集筛选下重排仅影响所选容器,其余容器原样保留', async () => {
+  it('子集筛选下关闭整卡拖拽,卡片内重排仅影响所选分组', async () => {
     const store = useTotpStore()
-    const { gA, a1, a2 } = seedForDrag(store)
+    const { gA } = seedForDrag(store)
     await store.saveNow()
 
     const w = await mountHome()
@@ -572,37 +603,18 @@ describe('HomeView 拖拽排序', () => {
     selectFilter(w, gA.id)
     await nextTick()
 
-    ;(w.vm as unknown as { filteredItems: TotpItem[] }).filteredItems = [a2, a1]
+    // 部分筛选视图不渲染整卡排序容器,避免拖拽破坏分组全局顺序
+    expect(w.find('.group-sort').exists()).toBe(false)
+    expect(w.findAll('.group-grip')).toHaveLength(0)
+
+    // 模拟 Sortable 在"工作"卡片内落地的原地重排:A2 与 A1 对调
+    const items = store.data.groups[0].items
+    ;[items[0], items[1]] = [items[1], items[0]]
+    findCard(w, '工作').vm.$emit('itemDragEnd')
     await nextTick()
 
     expect(store.data.groups[0].items.map((i) => i.issuer)).toEqual(['A2', 'A1'])
     expect(store.data.groups[1].items.map((i) => i.issuer)).toEqual(['B1'])
-  })
-
-  it('move 守卫:同容器落点放行,跨容器落点拒绝', async () => {
-    const store = useTotpStore()
-    const { a1, a2, u1 } = seedForDrag(store)
-    await store.saveNow()
-
-    const w = await mountHome()
-    await nextTick()
-
-    const vm = w.vm as unknown as {
-      onDragMove: (evt: unknown) => boolean
-    }
-    expect(
-      vm.onDragMove({
-        draggedContext: { element: a1 },
-        relatedContext: { element: a2 },
-      }),
-    ).toBe(true)
-    expect(
-      vm.onDragMove({
-        draggedContext: { element: a1 },
-        relatedContext: { element: u1 },
-      }),
-    ).toBe(false)
-    // 缺少上下文时不拦截
-    expect(vm.onDragMove({})).toBe(true)
+    expect(store.data.ungrouped.map((i) => i.issuer)).toEqual(['U1', 'U2'])
   })
 })
