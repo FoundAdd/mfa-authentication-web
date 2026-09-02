@@ -174,6 +174,37 @@
         >
           {{ target.name }}
         </div>
+
+        <div
+          v-if="moveTargets.length > 0"
+          class="move-target move-create"
+          @click="openMoveCreate"
+        >
+          <el-icon><FolderAdd /></el-icon>
+          <span>{{ t('group.moveToNew') }}</span>
+        </div>
+
+        <template v-if="moveCreating">
+          <el-input
+            v-model="moveCreateName"
+            :placeholder="t('group.renamePlaceholder')"
+            maxlength="50"
+            clearable
+            @keyup.enter="confirmMoveCreate"
+          />
+          <div class="move-create-actions">
+            <el-button @click="cancelMoveCreate">
+              {{ t('common.cancel') }}
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="!moveCreateName.trim()"
+              @click="confirmMoveCreate"
+            >
+              {{ t('group.moveToNewConfirm') }}
+            </el-button>
+          </div>
+        </template>
       </div>
     </ResponsiveDialog>
 
@@ -516,6 +547,7 @@ function openMove() {
 }
 
 function onMoveClosed() {
+  cancelMoveCreate()
   exitBatch()
 }
 
@@ -545,6 +577,34 @@ function confirmMove(targetId: string | null) {
   }
   moveVisible.value = false
   exitBatch()
+}
+
+// ---- move to new group ----
+const moveCreating = ref(false)
+const moveCreateName = ref('')
+
+function openMoveCreate() {
+  moveCreating.value = true
+  moveCreateName.value = ''
+}
+
+function cancelMoveCreate() {
+  moveCreating.value = false
+  moveCreateName.value = ''
+}
+
+// 在移动弹窗内新建分组,并把当前已选条目立即移入
+function confirmMoveCreate() {
+  const name = moveCreateName.value.trim()
+  if (!name) return
+  // 同名分组已存在时直接移入该分组,避免产生重名分组
+  const existing = totpStore.data.groups.find(
+    (g) => g.name.toLowerCase() === name.toLowerCase(),
+  )
+  const targetId = existing ? existing.id : totpStore.addGroup(name).id
+  moveCreating.value = false
+  moveCreateName.value = ''
+  confirmMove(targetId)
 }
 
 // ---- group delete ----
@@ -757,6 +817,25 @@ onMounted(async () => {
 
 .move-target:active {
   background: var(--el-color-primary-light-9);
+}
+
+.move-create {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--el-color-primary);
+}
+
+.move-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.move-create-actions :deep(.el-button) {
+  margin-left: 0;
 }
 
 .group-delete-msg {

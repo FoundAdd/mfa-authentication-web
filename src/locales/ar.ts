@@ -63,6 +63,8 @@ export default {
     count: '{count} عنصر',
     moveUp: 'نقل للأعلى',
     moveDown: 'نقل للأسفل',
+    moveToNew: 'مجموعة جديدة ونقل',
+    moveToNewConfirm: 'إنشاء ونقل',
   },
   empty: {
     title: 'لا مزيد من المفاتيح',

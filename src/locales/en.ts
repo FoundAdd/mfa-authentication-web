@@ -63,6 +63,8 @@ export default {
     count: '{count} items',
     moveUp: 'Move Up',
     moveDown: 'Move Down',
+    moveToNew: 'New group and move',
+    moveToNewConfirm: 'Create and move',
   },
   empty: {
     title: 'No more keys',

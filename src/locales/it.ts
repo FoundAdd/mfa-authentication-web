@@ -63,6 +63,8 @@ export default {
     count: '{count} elementi',
     moveUp: 'Sposta su',
     moveDown: 'Sposta giù',
+    moveToNew: 'Nuovo gruppo e sposta',
+    moveToNewConfirm: 'Crea e sposta',
   },
   empty: {
     title: 'Non ci sono altre chiavi',

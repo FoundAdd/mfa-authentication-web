@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { flushPromises, mount, type VueWrapper, type DOMWrapper } from '@vue/test-utils'
+import { flushPromises, mount, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
@@ -10,6 +10,7 @@ import draggable from 'vuedraggable'
 import HomeView from './HomeView.vue'
 import ItemRow from '@/components/ItemRow.vue'
 import GroupCard from '@/components/GroupCard.vue'
+import BatchBar from '@/components/BatchBar.vue'
 import { useTotpStore } from '@/stores/totp'
 import zhCN from '@/locales/zh-CN'
 import type { TotpItem } from '@/types'
@@ -618,5 +619,118 @@ describe('HomeView 拖拽排序', () => {
     expect(store.data.groups[0].items.map((i) => i.issuer)).toEqual(['A2', 'A1'])
     expect(store.data.groups[1].items.map((i) => i.issuer)).toEqual(['B1'])
     expect(store.data.ungrouped.map((i) => i.issuer)).toEqual(['U1', 'U2'])
+  })
+})
+
+describe('HomeView 移动到分组弹窗', () => {
+  function findButtonByText(
+    root: VueWrapper | DOMWrapper<Element>,
+    text: string,
+  ): DOMWrapper<Element> {
+    const button = body().findAll('button').find((b) => b.text() === text)
+    expect(button, `button "${text}" not found`).toBeDefined()
+    return button!
+  }
+
+  const body = () => new DOMWrapper(document.body)
+
+  async function openMoveDialog(w: VueWrapper, rowIndex = 0) {
+    rowWrappers(w)[rowIndex].vm.$emit('longpress')
+    await nextTick()
+    // 多选模式下底部 BatchBar 打开移动弹窗
+    w.findComponent(BatchBar).vm.$emit('move')
+    await nextTick()
+  }
+
+  it('移动弹窗提供"新增分组并移动"选项,确认后创建分组并移入', async () => {
+    const store = useTotpStore()
+    store.addGroup('已有分组')
+    store.addItem(null, item('Apple', 'c', 'MFRGGZDFMZTWQ2LK'))
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+    await openMoveDialog(w)
+
+    // 弹窗内除"未分组"目标外,末尾展示"新增分组并移动"
+    const createEntry = body().find('.move-target.move-create')
+    expect(createEntry.exists()).toBe(true)
+    expect(createEntry.text()).toContain('新增分组并移动')
+
+    createEntry.trigger('click')
+    await nextTick()
+    const input = body().find('.move-list input')
+    expect(input.exists()).toBe(true)
+
+    await input.setValue('新分组')
+    await findButtonByText(body(), '创建并移入').trigger('click')
+    await nextTick()
+
+    // 新分组已创建,条目移入,多选模式退出
+    expect(store.data.groups.map((g) => g.name)).toEqual(['已有分组', '新分组'])
+    const created = store.data.groups.find((g) => g.name === '新分组')!
+    expect(created.items.map((i) => i.issuer)).toEqual(['Apple'])
+    expect(store.data.ungrouped).toHaveLength(0)
+    expect(w.find('.batch-title').exists()).toBe(false)
+  })
+
+  it('输入重名分组(大小写不敏感)时直接移入已有分组,不重复创建', async () => {
+    const store = useTotpStore()
+    const gA = store.addGroup('工作')
+    store.addItem(gA.id, item('GitHub', 'a', 'JBSWY3DPEHPK3PXP'))
+    store.addItem(null, item('Apple', 'c', 'MFRGGZDFMZTWQ2LK'))
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+    await openMoveDialog(w, 1)
+
+    body().find('.move-target.move-create').trigger('click')
+    await nextTick()
+    await body().find('.move-list input').setValue('工作')
+    await findButtonByText(body(), '创建并移入').trigger('click')
+    await nextTick()
+
+    // 不产生重名分组,Apple 移入已有的"工作"分组
+    expect(store.data.groups).toHaveLength(1)
+    expect(store.data.groups[0].items.map((i) => i.issuer)).toEqual([
+      'GitHub',
+      'Apple',
+    ])
+    expect(store.data.ungrouped).toHaveLength(0)
+  })
+
+  it('未输入名称时确认按钮禁用,取消后停留在弹窗', async () => {
+    const store = useTotpStore()
+    store.addGroup('已有分组')
+    store.addItem(null, item('Apple', 'c', 'MFRGGZDFMZTWQ2LK'))
+    await store.saveNow()
+
+    const w = await mountHome()
+    await nextTick()
+    await openMoveDialog(w)
+
+    body().find('.move-target.move-create').trigger('click')
+    await nextTick()
+
+    const confirmBtn = body()
+      .findAll('button')
+      .find((b) => b.text() === '创建并移入')!
+    expect((confirmBtn.element as HTMLButtonElement).disabled).toBe(true)
+
+    await body().find('.move-list input').setValue('  ')
+    expect(
+      (
+        body().findAll('button').find((b) => b.text() === '创建并移入')!
+          .element as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+
+    // 取消后回到目标列表,未创建分组
+    await findButtonByText(body(), '取消').trigger('click')
+    await nextTick()
+    expect(body().find('.move-list input').exists()).toBe(false)
+    expect(body().find('.move-target.move-create').exists()).toBe(true)
+    expect(store.data.groups.map((g) => g.name)).toEqual(['已有分组'])
   })
 })

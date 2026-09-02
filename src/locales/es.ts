@@ -63,6 +63,8 @@ export default {
     count: '{count} elementos',
     moveUp: 'Subir',
     moveDown: 'Bajar',
+    moveToNew: 'Nuevo grupo y mover',
+    moveToNewConfirm: 'Crear y mover',
   },
   empty: {
     title: 'No hay más claves',
