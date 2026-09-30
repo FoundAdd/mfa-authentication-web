@@ -45,5 +45,7 @@ npm run test       # Vitest
 
 ## 文档
 
-- 需求说明: [docs/Phase01.md](docs/Phase01.md)
-- 任务拆分与验收标准: [docs/](docs/) 目录下的 `Phase01-task*.md`
+- Phase 1 需求说明: [docs/Phase01.md](docs/Phase01.md)
+- Phase 1 任务拆分与验收标准: [docs/](docs/) 目录下的 `Phase01-task*.md`
+- Phase 2 云同步需求说明: [docs/Phase2.md](docs/Phase2.md)
+- Phase 2 任务拆分与验收标准: [docs/](docs/) 目录下的 `Phase2-task*.md`
